@@ -1,0 +1,7 @@
+import { Migration } from 'kodoDB'
+
+export class DummyClass extends Migration {
+    run() {
+        //
+    }
+}

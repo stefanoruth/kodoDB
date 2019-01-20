@@ -1,0 +1,22 @@
+{
+	"defaultSeverity": "error",
+	"extends": ["tslint:recommended", "tslint-config-prettier"],
+	"jsRules": {},
+	"rules": {
+		"no-console": false,
+		"semicolon": false,
+		"arrow-return-shorthand": true,
+		"curly": true,
+		"trailing-comma": true,
+		"encoding": true,
+		"ordered-imports": false,
+		"eofline": true,
+		"no-default-export": true,
+		"interface-name": false,
+		"member-access": false,
+		"member-ordering": false,
+		"object-literal-sort-keys": false,
+		"interface-over-type-literal": false
+	},
+	"rulesDirectory": []
+}
