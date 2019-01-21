@@ -20,11 +20,15 @@ export interface ConnectionConfig {
 export interface DatabaseConfig {
 	default: string
 	connections: { [key: string]: ConnectionConfig }
-	migrations: string
+	migrations: {
+		path: string[]
+		table: string
+	}
 }
 
 export const config: DatabaseConfig = {
 	default: process.env.DB_CONNECTION || 'mysql',
+
 	connections: {
 		sqlite: {
 			driver: 'sqlite',
@@ -32,6 +36,7 @@ export const config: DatabaseConfig = {
 			prefix: '',
 			foreign_key_constraints: process.env.DB_FOREIGN_KEYS || true,
 		},
+
 		mysql: {
 			driver: 'mysql',
 			host: process.env.DB_HOST || '127.0.0.1',
@@ -47,6 +52,36 @@ export const config: DatabaseConfig = {
 			strict: true,
 			engine: null,
 		},
+
+		pgsql: {
+			driver: 'pgsql',
+			host: process.env.DB_HOST || '127.0.0.1',
+			port: process.env.DB_PORT || '5432',
+			database: process.env.DB_DATABASE || '',
+			username: process.env.DB_USERNAME || '',
+			password: process.env.DB_PASSWORD || '',
+			charset: 'utf8',
+			prefix: '',
+			prefix_indexes: true,
+			schema: 'public',
+			sslmode: 'prefer',
+		},
+
+		sqlsrv: {
+			driver: 'sqlsrv',
+			host: process.env.DB_HOST || 'localhost',
+			port: process.env.DB_PORT || '1433',
+			database: process.env.DB_DATABASE || '',
+			username: process.env.DB_USERNAME || '',
+			password: process.env.DB_PASSWORD || '',
+			charset: 'utf8',
+			prefix: '',
+			prefix_indexes: true,
+		},
 	},
-	migrations: 'migrations',
+
+	migrations: {
+		path: [__dirname + '/migrations'],
+		table: 'migrations',
+	},
 }
