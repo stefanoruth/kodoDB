@@ -27,17 +27,17 @@
 		"tslint-config-prettier": "^1.17.0"
 	},
 	"bin": {
-		"ruth-db": "./dist/cli.js"
+		"kododb": "./dist/cli.js"
 	},
 	"jest": {
 		"preset": "ts-jest",
 		"testEnvironment": "node",
 		"collectCoverage": false,
 		"collectCoverageFrom": [
-			"**/src/**/*.ts"
+			"<rootDir>/src/**/*.ts"
 		],
 		"testMatch": [
-			"**/tests/**/*.test.ts"
+			"<rootDir>/tests/**/*.test.ts"
 		]
 	}
 }
