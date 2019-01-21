@@ -1,5 +1,7 @@
+export type DatabaseDrivers = 'mysql' | 'sqlite' | 'pgsql' | 'sqlsrv'
+
 export interface ConnectionConfig {
-	driver: 'mysql' | 'sqlite' | 'pgsql' | 'sqlsrv' | string
+	driver: DatabaseDrivers | string
 	host?: string
 	port?: string
 	database?: string
