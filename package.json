@@ -14,15 +14,30 @@
 	"scripts": {
 		"build": "tsc",
 		"watch": "tsc --watch",
+		"test": "jest",
 		"lint": "tslint -c ./tslint.json ./src/*"
 	},
 	"devDependencies": {
+		"@types/jest": "^23.3.13",
+		"jest": "^23.6.0",
 		"mysql": "^2.16.0",
 		"nodemon": "^1.18.9",
+		"ts-jest": "^23.10.5",
 		"tslint": "^5.12.1",
 		"tslint-config-prettier": "^1.17.0"
 	},
 	"bin": {
 		"ruth-db": "./dist/cli.js"
+	},
+	"jest": {
+		"preset": "ts-jest",
+		"testEnvironment": "node",
+		"collectCoverage": false,
+		"collectCoverageFrom": [
+			"**/src/**/*.ts"
+		],
+		"testMatch": [
+			"**/tests/**/*.test.ts"
+		]
 	}
 }
