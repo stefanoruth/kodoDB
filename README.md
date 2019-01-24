@@ -24,4 +24,11 @@ import { User } from './UserModel.ts'
 User.where('email', 'user@example.com')->firstOrFail()
 User.all()
 User.where('created_at', '>', '2019-01-24 00:00:00')->get()
+
+const user = new User()
+
+user.name = 'John Doe'
+user.email = 'johndoe@example.com'
+
+user.save()
 ```
