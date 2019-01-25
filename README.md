@@ -5,6 +5,7 @@
 UserModel.ts
 ```typescript
 import { Model, SoftDeletes } from 'kodo-db'
+import { Role } from './Role'
 
 export class User extends Model implements SoftDeletes {
     attributes = [
@@ -14,6 +15,10 @@ export class User extends Model implements SoftDeletes {
       'password',
       'avatar',
     ]
+    
+    roles() {
+        return this.belongsToMany(Role)
+    }
 }
 ```
 
@@ -24,6 +29,7 @@ import { User } from './UserModel.ts'
 User.where('email', 'user@example.com')->firstOrFail()
 User.all()
 User.where('created_at', '>', '2019-01-24 00:00:00')->get()
+User.with('roles.permission')->find(1)
 
 const user = new User()
 
