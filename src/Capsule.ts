@@ -1,31 +1,45 @@
 import { Builder } from './Builder'
-import { Connection } from './Connectors/Connection'
+import { ConnectionFactory } from './Connectors/ConnectionFactory'
+import { DatabaseManager } from './DatabaseManager'
+import { Config, ConnectionConfig } from './config'
 
 export class Capsule {
-	protected static instance: Capsule
-	// protected mananger
+	public static instance: Capsule
+	protected manager: DatabaseManager
 
-	// manager
+	constructor() {
+		this.manager = new DatabaseManager()
+	}
 
-	// addConnection(connection: Connection, name: string = 'default') {
-	// 	this.connections[name] = connection
+	static connection(connection?: string) {
+		return Capsule.instance!.getConnection(connection)
+	}
 
-	// 	return this
-	// }
+	static table(table: string, connection?: string) {
+		// return Capsule.connection(connection).table(table)
+	}
 
-	// getConnection(name: string = 'default') {
-	// 	return this.connections[name]
-	// }
+	static schema(connection?: string) {
+		return Capsule.connection(connection).getSchemaBuilder()
+	}
 
-	// table(name?: string) {
-	// 	return Capsule.connection().table(name)
-	// }
+	getConnection(name?: string) {
+		return this.manager.connection(name)
+	}
 
-	public static connection(name?: string) {
-		// Capsule.instance.getConnection(name)
+	addConnection(connection: ConnectionConfig, name: string = 'default') {
+		Config.addConnection(name, connection)
+
+		return this
+	}
+
+	getDatabaseManager() {
+		return this.manager
 	}
 
 	setAsGlobal() {
 		Capsule.instance = this
+
+		return this
 	}
 }

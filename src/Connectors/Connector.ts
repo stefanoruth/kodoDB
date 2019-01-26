@@ -1,2 +1,5 @@
-export interface Connector {}
-export class Connector {}
+import { ConnectionConfig } from '../config'
+
+export interface Connector {
+	connect: (config: ConnectionConfig) => any
+}

@@ -1,5 +1,7 @@
 interface HasAttributes {
-  attributes: string[]
+	attributes?: string[]
 }
 
-export abstract class Model {}
+export interface SoftDeletes {}
+
+export abstract class Model implements HasAttributes {}

@@ -1,4 +1,7 @@
 import { Builder as QueryBuilder } from '../Query/Builder'
+import { ConnectionConfig } from '../config'
+import { Builder } from '../Schema/Builder'
+import { Grammar } from '../Schema/Grammars/Grammar'
 
 export interface ConnectionInterface {
 	table(table: string): QueryBuilder
@@ -21,21 +24,31 @@ export interface ConnectionInterface {
 	pretend(callback: () => {}): []
 }
 
-export class Connection {
-	protected connection: any
-	protected database?: string
-	protected tablePrefix?: string
-	protected config: any
+interface ConnectionInterfacePart1 {
+	getSchemaBuilder: () => Builder
+	getDefaultSchemaGrammar: () => Grammar
+}
 
-	constructor(
-		connection: any,
-		database?: string,
-		tablePrefix?: string,
-		config: any = {}
-	) {
-		this.connection = connection
-		this.database = database
-		this.tablePrefix = tablePrefix
+export abstract class Connection implements ConnectionInterfacePart1 {
+	protected config: any
+	protected schemaGrammar: Grammar
+
+	constructor(config: ConnectionConfig) {
 		this.config = config
+
+		// this.useDefaultSchemaGrammar()
+		this.schemaGrammar = this.getDefaultSchemaGrammar()
 	}
+
+	useDefaultSchemaGrammar() {
+		this.schemaGrammar = this.getDefaultSchemaGrammar()
+	}
+
+	getSchemaGrammar() {
+		return this.schemaGrammar
+	}
+
+	abstract getSchemaBuilder(): Builder
+
+	abstract getDefaultSchemaGrammar(): Grammar
 }

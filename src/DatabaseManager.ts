@@ -1,4 +1,4 @@
-import { DatabaseConfig, ConnectionConfig } from './config'
+import { DatabaseConfig, ConnectionConfig, Config } from './config'
 import { ConnectionFactory } from './Connectors/ConnectionFactory'
 import { Connection } from './Connections/Connection'
 
@@ -9,9 +9,9 @@ export class DatabaseManager {
 	protected config: DatabaseConfig
 	protected factory: ConnectionFactory
 
-	constructor(config: DatabaseConfig, factory: ConnectionFactory) {
-		this.config = config
-		this.factory = factory
+	constructor() {
+		this.config = Config.get()
+		this.factory = new ConnectionFactory()
 	}
 
 	connection(name?: string) {
@@ -19,10 +19,7 @@ export class DatabaseManager {
 		const type = null
 
 		if (!this.connections[database]) {
-			this.connections[database] = this.configure(
-				this.makeConnection(database),
-				type
-			)
+			this.connections[database] = this.configure(this.makeConnection(database), type)
 		}
 
 		return this.connections[database]
