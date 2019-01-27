@@ -17,6 +17,7 @@ export interface ConnectionConfig {
 	engine?: string | null
 	schema?: string
 	sslmode?: string
+	modes?: string
 }
 
 export interface DatabaseConfig {

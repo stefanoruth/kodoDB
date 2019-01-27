@@ -1,1 +1,3 @@
-export class MySqlProcessor {}
+import { QueryProcessor } from './QueryProcessor'
+
+export class MySqlProcessor extends QueryProcessor {}

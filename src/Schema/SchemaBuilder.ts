@@ -1,9 +1,9 @@
 import { Connection } from '../Connections/Connection'
-import { Grammar } from './Grammars/Grammar'
+import { SchemaGrammar } from './Grammars/SchemaGrammar'
 
-export class Builder {
+export class SchemaBuilder {
 	connection: Connection
-	grammer: Grammar
+	grammer: SchemaGrammar
 	static $defaultStringLength = 255
 
 	constructor(connection: Connection) {

@@ -1,1 +1,3 @@
-export class MySqlGrammar {}
+import { SchemaGrammar } from './SchemaGrammar'
+
+export class MySqlSchemaGrammar extends SchemaGrammar {}

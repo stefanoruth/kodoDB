@@ -1,15 +1,27 @@
 import { Capsule } from '../src'
 
-let capsule: Capsule
+let capsuleObject: Capsule
 
 beforeAll(() => {
-	capsule = new Capsule()
+	capsuleObject = new Capsule()
 })
 
 describe('kodo-db', () => {
 	it('Capsule can set instance as global', () => {
 		expect(Capsule.instance).not.toBeDefined()
-		capsule.setAsGlobal()
+		capsuleObject.setAsGlobal()
 		expect(Capsule.instance).toBeDefined()
+	})
+
+	it.only('Can connect to mysql', () => {
+		capsuleObject.setAsGlobal()
+
+		expect(
+			Capsule.table('users')
+				.where('email', 'LIKE', 'stefano@example.com')
+				.fist()
+		).toEqual({
+			email: 'stefano@example.com',
+		})
 	})
 })

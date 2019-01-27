@@ -1,3 +1,3 @@
-import { Builder } from './Builder'
+import { SchemaBuilder } from './SchemaBuilder'
 
-export class MySqlBuilder extends Builder {}
+export class MySqlBuilder extends SchemaBuilder {}
