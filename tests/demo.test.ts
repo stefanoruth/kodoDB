@@ -17,11 +17,11 @@ describe('kodo-db', () => {
 		capsuleObject.setAsGlobal()
 
 		expect(
-			Capsule.table('users')
+			capsuleObject
+				.getConnection()
+				.table('users')
 				.where('email', 'LIKE', 'stefano@example.com')
-				.fist()
-		).toEqual({
-			email: 'stefano@example.com',
-		})
+				.first()
+		).toBe(true)
 	})
 })
