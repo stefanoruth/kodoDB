@@ -2,6 +2,7 @@ import { Connection } from '../Connections/Connection'
 import { SchemaGrammar } from './Grammars/SchemaGrammar'
 import { SchemaBuilder } from './SchemaBuilder'
 import { ColumnDefinition } from './ColumnDefinition'
+import { tap } from '../Utils'
 
 export class Blueprint {
 	protected table: string
@@ -35,11 +36,9 @@ export class Blueprint {
 	}
 
 	protected addCommand(name: string, parameters: any[] | {} = []) {
-		const command = this.createCommand(name, parameters)
-
-		this.commands.push(command)
-
-		return command
+		return tap(this.createCommand(name, parameters), command => {
+			this.commands.push(command)
+		})
 	}
 
 	protected createCommand(name: string, parameters: any[] | {}) {
@@ -141,7 +140,7 @@ export class Blueprint {
 		return this.indexCommand('primary', columns, name, algorithm)
 	}
 
-	unique(columns: string, name?: string, algorithm?: string) {
+	unique(columns: string | string[], name?: string, algorithm?: string) {
 		return this.indexCommand('unique', columns, name, algorithm)
 	}
 
