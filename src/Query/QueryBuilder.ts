@@ -1,7 +1,7 @@
 import { Connection } from '../Connections/Connection'
 import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
-import { Collection } from '../Collection'
+import { Collection } from '../Utils/Collection'
 
 export class QueryBuilder {
 	connection: Connection

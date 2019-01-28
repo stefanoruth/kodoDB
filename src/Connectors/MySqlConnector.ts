@@ -4,12 +4,6 @@ import { ConnectionConfig } from '../config'
 
 export class MySqlConnector implements Connector {
 	connect(config: ConnectionConfig): Connection {
-		const connection = createConnection(this.formatConfig(config))
-
-		return connection
-	}
-
-	formatConfig(config: ConnectionConfig): MysqlConfig {
 		const mysql: MysqlConfig = {
 			host: config.host,
 			port: config.port ? parseInt(config.port, 10) : 3606,
@@ -19,6 +13,14 @@ export class MySqlConnector implements Connector {
 			charset: config.charset,
 		}
 
-		return mysql
+		const connection = createConnection(mysql)
+
+		connection.connect((error: Error) => {
+			if (error) {
+				console.log(error)
+			}
+		})
+
+		return connection
 	}
 }

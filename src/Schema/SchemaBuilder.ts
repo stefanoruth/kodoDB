@@ -4,7 +4,7 @@ import { SchemaGrammar } from './Grammars/SchemaGrammar'
 export class SchemaBuilder {
 	connection: Connection
 	grammer: SchemaGrammar
-	static $defaultStringLength = 255
+	static defaultStringLength = 255
 
 	constructor(connection: Connection) {
 		this.connection = connection

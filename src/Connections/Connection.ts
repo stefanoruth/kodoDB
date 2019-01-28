@@ -5,7 +5,7 @@ import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
 import { QueryGrammar } from '../Query/Grammars/QueryGrammar'
 import { QueryProcessor } from '../Query/Processors/QueryProcessor'
 import { QueryException } from '../Exceptions/QueryException'
-import { detectsLostConnections } from '../utils'
+import { detectsLostConnections } from '../Utils'
 
 export interface ConnectionInterface {
 	table(table: string): QueryBuilder
@@ -46,7 +46,6 @@ export abstract class Connection implements ConnectionInterfacePart1 {
 	constructor(config: ConnectionConfig) {
 		this.config = config
 
-		// this.useDefaultSchemaGrammar()
 		this.schemaGrammar = this.getDefaultSchemaGrammar()
 		this.queryGrammar = this.getDefaultQueryGrammar()
 		this.postProcessor = this.getDefaultPostProcessor()

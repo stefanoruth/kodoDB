@@ -13,13 +13,11 @@ describe('kodo-db', () => {
 		expect(Capsule.instance).toBeDefined()
 	})
 
-	it.only('Can connect to mysql', () => {
+	it('Can connect to mysql', () => {
 		capsuleObject.setAsGlobal()
 
 		expect(
-			capsuleObject
-				.getConnection()
-				.table('users')
+			Capsule.table('users')
 				.where('email', 'LIKE', 'stefano@example.com')
 				.first()
 		).toBe(true)

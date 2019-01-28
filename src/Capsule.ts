@@ -4,7 +4,7 @@ import { DatabaseManager } from './DatabaseManager'
 import { Config, ConnectionConfig } from './config'
 
 export class Capsule {
-	public static instance: Capsule
+	public static instance?: Capsule
 	protected manager: DatabaseManager
 
 	constructor() {
@@ -12,11 +12,15 @@ export class Capsule {
 	}
 
 	static connection(connection?: string) {
-		return Capsule.instance!.getConnection(connection)
+		if (!Capsule.instance) {
+			throw new Error('Capsule is not yet global')
+		}
+
+		return Capsule.instance.getConnection(connection)
 	}
 
 	static table(table: string, connection?: string) {
-		// return Capsule.connection(connection).table(table)
+		return Capsule.connection(connection).table(table)
 	}
 
 	static schema(connection?: string) {
