@@ -1,5 +1,16 @@
 # kodoDB
 
+## Todo
+
+- [ ] DatabaseConfig
+- [ ] DatabaseConnectors
+- [ ] Migrations
+- [ ] QueryBuilder
+- [ ] CLI
+- [ ] Models
+- [ ] Relations
+- [ ] Seeder
+
 ## Example
 
 UserModel.ts
