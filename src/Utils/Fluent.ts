@@ -27,10 +27,10 @@ export function buildFluent(attributes: any) {
 }
 
 export class Fluent implements LooseObject {
-	protected attributes = {}
+	protected attributes: any = {}
 
 	constructor(attributes: any) {
-		this.value = true
+		this.attributes = attributes
 	}
 
 	getAttributes() {

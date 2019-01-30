@@ -1,7 +1,7 @@
 import { CommandModule } from 'yargs'
 
-export class MakeCommand implements CommandModule<{}, {}> {
-	command = 'make'
+export class MigrateMakeCommand implements CommandModule<{}, {}> {
+	command = 'make:migration'
 	describe = 'Make migration'
 
 	async handler() {
