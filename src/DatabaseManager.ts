@@ -4,7 +4,13 @@ import { Connection } from './Connections/Connection'
 
 type DataBaseConnections = { [key: string]: Connection }
 
-export class DatabaseManager {
+export interface ConnectionResolver {
+	connection: (name?: string) => Connection
+	getDefaultConnection: () => string
+	setDefaultConnection: (name: string) => void
+}
+
+export class DatabaseManager implements ConnectionResolver {
 	protected connections: DataBaseConnections = {}
 	protected config: DatabaseConfig
 	protected factory: ConnectionFactory
@@ -14,7 +20,7 @@ export class DatabaseManager {
 		this.factory = new ConnectionFactory()
 	}
 
-	connection(name?: string) {
+	connection(name?: string): Connection {
 		const database = name || this.getDefaultConnection()
 		const type = null
 
@@ -42,6 +48,10 @@ export class DatabaseManager {
 
 	getDefaultConnection() {
 		return this.config.default
+	}
+
+	setDefaultConnection(name: string) {
+		this.config.default = name
 	}
 
 	configuration(name?: string): ConnectionConfig {

@@ -2,6 +2,17 @@ import { Connection } from '../Connections/Connection'
 import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection } from '../Utils/Collection'
+import { Expression } from './Expression'
+
+interface Bindings {
+	select: string[]
+	from: string[]
+	join: string[]
+	where: string[]
+	having: string[]
+	order: string[]
+	union: string[]
+}
 
 export class QueryBuilder {
 	connection: Connection
@@ -9,19 +20,9 @@ export class QueryBuilder {
 	processor: QueryProcessor
 
 	fromTable?: string
-	selectLimit?: number
-	unionLimit?: number
-	unions?: any
+
 	columns?: any[]
-	bindings: {
-		select: string[]
-		from: string[]
-		join: string[]
-		where: string[]
-		having: string[]
-		order: string[]
-		union: string[]
-	} = {
+	bindings: Bindings = {
 		select: [],
 		from: [],
 		join: [],
@@ -30,6 +31,51 @@ export class QueryBuilder {
 		order: [],
 		union: [],
 	}
+	distinct = false
+	joins?: []
+	wheres?: []
+	groups?: []
+	havings?: []
+	orders?: []
+	selectLimit?: number
+	offset?: number
+	unions?: []
+	unionLimit?: number
+	unionOffset?: number
+	unionOrders?: []
+	lock?: string | boolean
+
+	operators: string[] = [
+		'=',
+		'<',
+		'>',
+		'<=',
+		'>=',
+		'<>',
+		'!=',
+		'<=>',
+		'like',
+		'like binary',
+		'not like',
+		'ilike',
+		'&',
+		'|',
+		'^',
+		'<<',
+		'>>',
+		'rlike',
+		'regexp',
+		'not regexp',
+		'~',
+		'~*',
+		'!~',
+		'!~*',
+		'similar to',
+		'not similar to',
+		'not ilike',
+		'~~*',
+		'!~~*',
+	]
 
 	constructor(connection: Connection, grammar: QueryGrammar, processor: QueryProcessor) {
 		this.connection = connection
@@ -99,5 +145,20 @@ export class QueryBuilder {
 
 	protected runSelect() {
 		return this.connection.select(this.toSql(), this.getBindings())
+	}
+
+	select(columns: string[] = ['*']) {
+		this.columns = columns
+
+		return this
+	}
+
+	selectRaw(expression: string, bindings = []) {
+		this.addSelect(new Expression(expression))
+
+		if (bindings) {
+			this.addBinding(bindings, 'select')
+		}
+		return this
 	}
 }
