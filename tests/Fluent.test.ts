@@ -1,4 +1,4 @@
-import { Fluent, buildFluent } from '../src/Utils/Fluent'
+import { Fluent, buildFluent, ArrayProxy } from '../src/Utils/Fluent'
 
 describe('Fluent', () => {
 	test.only('AttributesAreSetByConstructor', () => {
@@ -10,7 +10,17 @@ describe('Fluent', () => {
 		// const fluent = new Fluent(obj)
 		const fluent = buildFluent(obj)
 
-		// console.log(fluent)
+		console.log(fluent.demo)
+
+		expect(fluent.getAttributes()).toBe(true)
+
+		const arrayProxy = new ArrayProxy(['da'])
+
+		arrayProxy.customFunction()
+
+		arrayProxy.push('der')
+
+		expect(arrayProxy).toBe(true)
 
 		// console.log(fluent)
 

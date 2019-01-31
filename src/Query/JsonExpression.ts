@@ -10,13 +10,11 @@ function getJsonBindingParameter(value: any): string {
 	switch (type) {
 		case 'boolean':
 			return value ? 'true' : 'false'
-		case 'NULL':
-		case 'integer':
-		case 'double':
+		case 'number':
 		case 'string':
 			return '?'
 		case 'object':
-		case 'array':
+		case 'bigint':
 			return '?'
 	}
 

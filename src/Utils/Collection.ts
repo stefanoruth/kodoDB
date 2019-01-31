@@ -17,6 +17,14 @@ export class Collection {
 		return this.items[0]
 	}
 
+	map(callbackfn: (value: any, index: number, array: any[]) => any, thisArg?: any): Collection {
+		return new Collection(this.items.map(callbackfn))
+	}
+
+	join(separator?: string | undefined) {
+		return this.items.join(separator)
+	}
+
 	static make(items: any = []) {
 		return new Collection(items)
 	}

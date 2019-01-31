@@ -154,10 +154,10 @@ export class QueryBuilder {
 	}
 
 	selectRaw(expression: string, bindings = []) {
-		this.addSelect(new Expression(expression))
+		// this.addSelect(new Expression(expression))
 
 		if (bindings) {
-			this.addBinding(bindings, 'select')
+			// this.addBinding(bindings, 'select')
 		}
 		return this
 	}
