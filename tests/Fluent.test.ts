@@ -1,26 +1,25 @@
-import { Fluent, buildFluent, ArrayProxy } from '../src/Utils/Fluent'
+import { Fluent } from '../src/Utils/Fluent'
 
 describe('Fluent', () => {
 	test.only('AttributesAreSetByConstructor', () => {
-		const obj = {
-			name: 'Foobar',
-			age: 25,
-		}
+		const fluent = Fluent()
 
-		// const fluent = new Fluent(obj)
-		const fluent = buildFluent(obj)
+		fluent.foo = true
 
-		console.log(fluent.demo)
+		expect(fluent.foo).toBe(true)
 
-		expect(fluent.getAttributes()).toBe(true)
+		fluent.bar = 'foobar'
 
-		const arrayProxy = new ArrayProxy(['da'])
+		expect(fluent.bar).toBe('foobar')
 
-		arrayProxy.customFunction()
+		console.log(fluent.attributes)
 
-		arrayProxy.push('der')
+		expect(fluent.foo).toBe(true)
+		expect(fluent.getAttribute('foo')).toBe(true)
 
-		expect(arrayProxy).toBe(true)
+		fluent.nullable()
+
+		expect(fluent.nullable).toBe(true)
 
 		// console.log(fluent)
 

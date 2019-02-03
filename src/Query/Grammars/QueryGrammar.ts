@@ -1,6 +1,6 @@
 import { QueryBuilder } from '../QueryBuilder'
-import { Expression } from '../Expression';
-import { BaseGrammar } from '../../BaseGrammar';
+import { Expression } from '../Expression'
+import { BaseGrammar } from '../../BaseGrammar'
 
 export class QueryGrammar extends BaseGrammar {
 	protected operators = []
@@ -89,23 +89,22 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	protected whereNull(query: QueryBuilder, where: any[]): string {
-        return this.wrap(where.column).' is null';
-    }
+		return this.wrap(where.column) + ' is null'
+	}
 
-    wrap(value: string | Expression, prefixAlias: boolean = false): string {
-        if (this.isExpression(value)) {
-            return this.getValue(value)
-        }
+	wrap(value: string | Expression, prefixAlias: boolean = false): string {
+		if (this.isExpression(value)) {
+			return this.getValue(value)
+		}
 
-        if (value.toString().indexOf(' as ') !== -1) {
-            return this.wrapAliasedValue(value, prefixAlias)
+		if (value.toString().indexOf(' as ') !== -1) {
+			return this.wrapAliasedValue(value, prefixAlias)
+		}
 
-        }
+		if (this.isJsonSelector(value)) {
+			return this.wrapJsonSelector(value)
+		}
 
-        if (this.isJsonSelector(value)) {
-            return this.wrapJsonSelector(value)
-        }
-
-        return this.wrapSegments(value.toString().split(.))
-    }
+		return this.wrapSegments(value.toString().split('.'))
+	}
 }
