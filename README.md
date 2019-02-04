@@ -54,3 +54,19 @@ user.email = 'johndoe@example.com'
 user.save()
 user.delete()
 ```
+
+### Migration
+201902040959800_create_users_table.ts
+```typescript
+export class CreateUsersTable extends Migration {
+    run() {
+    	Schema.create('users', (table) => {
+	   table.integer('id').primary()
+	   table.string('email').unique()
+	   table.string('name').nullable()
+	   table.string('password', 60)
+	   table.timestamps()
+	})
+    }
+}
+```
