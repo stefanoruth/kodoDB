@@ -56,7 +56,7 @@ user.delete()
 ```
 
 ### Migration
-201902040959800_create_users_table.ts
+2019_02_04_095900_create_users_table.ts
 ```typescript
 export class CreateUsersTable extends Migration {
     run() {
