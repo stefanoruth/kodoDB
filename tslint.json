@@ -17,8 +17,7 @@
 		"member-ordering": false,
 		"object-literal-sort-keys": false,
 		"interface-over-type-literal": false,
-		"max-classes-per-file": 5,
-		"noImplicitAny": false
+		"max-classes-per-file": 5
 	},
 	"rulesDirectory": []
 }
