@@ -6,12 +6,12 @@ export class QueryProcessor {
 	}
 
 	processInsertGetId(query: QueryBuilder, sql: string, values: any[], sequence?: string) {
-		query.getConnection().insert(sql, values)
-
+		// query.getConnection().insert(sql, values)
+		// return query
+		// 	.getConnection()
+		// 	.getPdo()
+		// 	.lastInsertId(sequence)
 		return query
-			.getConnection()
-			.getPdo()
-			.lastInsertId(sequence)
 	}
 
 	processColumnListing(results: any[]): any[] {

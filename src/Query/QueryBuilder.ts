@@ -14,13 +14,39 @@ interface Bindings {
 	union: string[]
 }
 
-export class QueryBuilder {
+export interface QueryBuilderType {
+	connection: Connection
+	grammar: QueryGrammar
+	processor: QueryProcessor
+	fromTable?: string
+	aggregate?: []
+	columns?: any[]
+	bindings: Bindings
+	distinct: boolean
+	joins?: []
+	wheres?: []
+	groups?: []
+	havings?: []
+	orders?: []
+	selectLimit?: number
+	offset?: number
+	unions?: []
+	unionLimit?: number
+	unionOffset?: number
+	unionOrders?: []
+	lock?: string | boolean
+	operators: string[]
+	[key: string]: any
+}
+
+export class QueryBuilder implements QueryBuilderType {
 	connection: Connection
 	grammar: QueryGrammar
 	processor: QueryProcessor
 
 	fromTable?: string
 
+	aggregate?: []
 	columns?: any[]
 	bindings: Bindings = {
 		select: [],

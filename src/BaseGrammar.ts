@@ -5,29 +5,31 @@ export class BaseGrammar {
 	protected tablePrefix: string = ''
 
 	wrapArray(values: any[]): any[] {
-		return values.map(this.wrap)
+		return values.map(value => this.wrap(value))
 	}
 
 	wrapTable(table: string | Expression): string {
-		if (!this.isExpression(table)) {
+		if (!(table instanceof Expression)) {
 			return this.wrap(this.tablePrefix + table, true)
 		}
+
 		return this.getValue(table)
 	}
 
 	wrap(value: string | Expression, prefixAlias: boolean = false): string {
-		if (this.isExpression(value)) {
+		if (value instanceof Expression) {
 			return this.getValue(value)
 		}
 
-		if (stripos(value, ' as ') !== false) {
+		if (value.toString().indexOf(' as ') > -1) {
 			return this.wrapAliasedValue(value, prefixAlias)
 		}
+
 		return this.wrapSegments(value.toString().split('.'))
 	}
 
 	wrapAliasedValue(value: string, prefixAlias: boolean = false): string {
-		const segments = preg_split('/s+ass+/i', value)
+		const segments = value.split('/s+ass+/i')
 		// If we are wrapping a table we need to prefix the alias with the table prefix
 		// as well in order to generate proper syntax. If this is a column of course
 		// no prefix is necessary. The condition will be true when from wrapTable.
@@ -50,11 +52,12 @@ export class BaseGrammar {
 		if (value !== '*') {
 			return `"${value.replace('"', '""')}"`
 		}
+
 		return value
 	}
 
 	columnize(columns: string[]): string {
-		return columns.map(this.wrap).join(', ')
+		return columns.map(column => this.wrap(column)).join(', ')
 	}
 
 	parameterize(values: any[]): string {
@@ -62,7 +65,7 @@ export class BaseGrammar {
 	}
 
 	parameter(value: any): string {
-		return this.isExpression(value) ? this.getValue(value) : '?'
+		return value instanceof Expression ? this.getValue(value) : '?'
 	}
 
 	quoteString(value: string | string[]): string {
@@ -71,10 +74,6 @@ export class BaseGrammar {
 			return ''
 		}
 		return `'${value}'`
-	}
-
-	isExpression(value: string | Expression): boolean {
-		return value instanceof Expression
 	}
 
 	getValue(expression: Expression): string {
