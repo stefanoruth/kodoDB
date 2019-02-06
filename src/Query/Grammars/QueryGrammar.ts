@@ -68,16 +68,16 @@ export class QueryGrammar extends BaseGrammar implements QueryGrammarType {
 	}
 
 	// Compile the components necessary for a select clause.
-	protected compileComponents(query: QueryBuilderType): any[] {
+	protected compileComponents(query: QueryBuilder): any[] {
 		const sql: any = {}
 
 		this.selectComponents.forEach((component: string) => {
 			// To compile the query, we'll spin through each component of the query and
 			// see if that component exists. If it does we'll just call the compiler
 			// function for the component which is responsible for making the SQL.
-			if (query[component]) {
+			if ((query as any)[component]) {
 				const method = 'compile' + ucfirst(component)
-				sql[component] = this[method](query, query[component])
+				sql[component] = (this as any)[method](query, (query as any)[component])
 			}
 		})
 		return sql
