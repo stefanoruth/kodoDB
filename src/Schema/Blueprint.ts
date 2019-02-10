@@ -1,18 +1,18 @@
 import { Connection } from '../Connections/Connection'
 import { SchemaGrammar } from './Grammars/SchemaGrammar'
 import { SchemaBuilder } from './SchemaBuilder'
-import { ColumnDefinition } from './ColumnDefinition'
-import { tap } from '../Utils'
+import { ColumnDefinition, ColumnBuilder } from './ColumnDefinition'
+import { tap, ucfirst, lcfirst } from '../Utils'
 
 export class Blueprint {
 	protected table: string
 	protected prefix: string
-	protected columns: string[] = []
+	protected columns: ColumnDefinition[] = []
 	protected commands: any[] = []
 	engine?: string
 	charset?: string
 	collation?: any
-	temporaryState = false
+	temporaryState: boolean = false
 
 	constructor(table: string, callback?: (blueprint: Blueprint) => void, prefix = '') {
 		this.table = table
@@ -24,15 +24,107 @@ export class Blueprint {
 	}
 
 	build(connection: Connection, grammar: SchemaGrammar) {
-		// Todo
+		this.toSql(connection, grammar).forEach((statement: string) => {
+			connection.statement(statement)
+		})
 	}
 
-	toSql(connection: Connection, grammar: SchemaGrammar) {
-		// Todo
+	toSql(connection: Connection, grammar: SchemaGrammar): string[] {
+		this.addImpliedCommands(grammar)
+
+		const statements: string[] = []
+
+		// Each type of command has a corresponding compiler function on the schema
+		// grammar which is used to build the necessary SQL statements to build
+		// the blueprint element, so we'll just call that compilers function.
+		this.ensureCommandsAreValid(connection)
+
+		console.log(this.commands)
+
+		this.commands.forEach(command => {
+			const method = 'compile' + ucfirst(command.name)
+			console.log(method)
+			if ((grammar as any)[method]) {
+				const sql = (grammar as any)[method](this, command, connection)
+				console.log(sql)
+				if (sql) {
+					statements.push(sql)
+				}
+			}
+		})
+
+		return statements
 	}
 
 	protected ensureCommandsAreValid(connection: Connection) {
-		// Todo
+		// Todo SQLiteConnection
+	}
+
+	protected addImpliedCommands(grammar: SchemaGrammar): void {
+		if (this.getAddedColumns().length > 0 && !this.creating()) {
+			this.commands.unshift(this.createCommand('add'))
+		}
+
+		if (this.getChangedColumns().length > 0 && !this.creating()) {
+			this.commands.unshift(this.createCommand('change'))
+		}
+
+		this.addFluentIndexes()
+		this.addFluentCommands(grammar)
+	}
+
+	protected addFluentIndexes() {
+		const indexes = ['primary', 'unique', 'index', 'spatialIndex']
+
+		Loop1: for (const keyColumn in this.columns) {
+			if (this.columns.hasOwnProperty(keyColumn)) {
+				const column: any = this.columns[keyColumn]
+
+				Loop2: for (const keyIndex in indexes) {
+					if (indexes.hasOwnProperty(keyIndex)) {
+						const index: string = indexes[keyIndex]
+
+						// If the index has been specified on the given column, but is simply equal
+						// to "true" (boolean), no name has been specified for this index so the
+						// index method can be called without a name and it will generate one.
+						if ((column as any)[index] === true) {
+							;(this as any)[index](column.name)
+
+							continue Loop2
+						}
+
+						// If the index has been specified on the given column, and it has a string
+						// value, we'll go ahead and call the index method and pass the name for
+						// the index since the developer specified the explicit name for this.
+						else if (typeof (column as any)[index] !== 'undefined') {
+							;(this as any)[index](column.name, column[index])
+
+							continue Loop2
+						}
+					}
+				}
+			}
+		}
+	}
+
+	addFluentCommands(grammar: SchemaGrammar) {
+		this.columns.forEach((column: any) => {
+			grammar.getFluentCommands().forEach((commandName: string) => {
+				const attributeName: string = lcfirst(commandName)
+
+				if (!column[attributeName]) {
+					return
+				}
+
+				this.addCommand(commandName, { value: column[attributeName], column })
+			})
+		})
+	}
+
+	protected creating(): boolean {
+		return this.commands.some((command: any) => {
+			return command.name === 'create'
+		})
 	}
 
 	protected addCommand(name: string, parameters: any[] | {} = []) {
@@ -41,8 +133,8 @@ export class Blueprint {
 		})
 	}
 
-	protected createCommand(name: string, parameters: any[] | {}) {
-		return name
+	protected createCommand(name: string, parameters?: {}) {
+		return new ColumnBuilder({ name, ...parameters }).build()
 	}
 
 	protected dropIndexCommand(command: string, type: string, index?: string | string[]) {
@@ -389,29 +481,25 @@ export class Blueprint {
 	}
 
 	addColumn(type: string, name: string, parameters = {}) {
-		// this.columns[] = $column = new ColumnDefinition(
-		//     array_merge(compact('type', 'name'), $parameters)
-		// );
-		// return $column;
-		return new ColumnDefinition({ type, name, ...parameters })
+		const column = new ColumnBuilder({ type, name, ...parameters })
+
+		this.columns.push(column)
+
+		return column
 	}
 
 	protected indexCommand(type: string, columns: string | string[], index?: string | string[], algorithm?: string) {
-		// $columns = (array) $columns;
-		// // If no name was specified for this index, we will create one using a basic
-		// // convention of the table name, followed by the columns, followed by an
-		// // index type, such as primary or index, which makes the index unique.
-		// $index = $index ?: this.createIndexName($type, $columns);
-		// return this.addCommand(
-		//     $type, compact('index', 'columns', 'algorithm')
-		// );
+		columns = columns instanceof Array ? columns : [columns]
+		// If no name was specified for this index, we will create one using a basic
+		// convention of the table name, followed by the columns, followed by an
+		// index type, such as primary or index, which makes the index unique.
+		index = index ? index : this.createIndexName(type, columns)
+
 		return this.addCommand(type, { index, columns, algorithm })
 	}
 
-	protected createIndexName(type: string, columns: string | string[]): string {
-		// $index = strtolower(this.prefix.this.table.'_'.implode('_', $columns).'_'.$type);
-		// return str_replace(['-', '.'], '_', $index);
-		return ''
+	protected createIndexName(type: string, columns: string[]): string {
+		return `${this.prefix}${this.table}_${columns.join('_')}_${type}`.toLowerCase().replace(new RegExp(/[\-\.]/gi), '_')
 	}
 
 	removeColumn(name: string) {
@@ -429,15 +517,15 @@ export class Blueprint {
 		return this.columns
 	}
 
-	getAddedColumns() {
-		// return array_filter(this.columns, function ($column) {
-		//     return !$column -> change;
-		// });
+	getAddedColumns(): ColumnDefinition[] {
+		return this.columns.filter((column: ColumnDefinition) => {
+			return !(column as any).change
+		})
 	}
 
-	getChangedColumns() {
-		// return array_filter(this.columns, function ($column) {
-		//     return (bool) $column -> change;
-		// });
+	getChangedColumns(): ColumnDefinition[] {
+		return this.columns.filter((column: ColumnDefinition) => {
+			return (column as any).change
+		})
 	}
 }

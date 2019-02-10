@@ -1,13 +1,40 @@
-interface BaseColumn {
+interface ColumnOptions {
 	name: string
 	type: string
-	[key: string]: any
+	after: string
+	always: boolean
+	autoIncrement: boolean
+	change: boolean
+	charset: string
+	collation: string
+	comment: string
+	default: any
+	first: boolean
+	generatedAs: string
+	nullable: boolean
+	primary: boolean
+	spatialIndex: boolean
+	storedAs: string
+	unique: boolean
+	unsigned: boolean
+	useCurrent: boolean
+	virtualAs: string
 }
 
-export class ColumnDefinition {
-	protected attributes: BaseColumn
+export class ColumnDefinition implements Partial<ColumnOptions> {
+	constructor(attributes: Partial<ColumnOptions>) {
+		for (const key in attributes) {
+			if (attributes.hasOwnProperty(key)) {
+				;(this as any)[key] = (attributes as any)[key]
+			}
+		}
+	}
+}
 
-	constructor(attributes: BaseColumn) {
+export class ColumnBuilder {
+	protected attributes: any
+
+	constructor(attributes: Partial<ColumnOptions>) {
 		this.attributes = attributes
 	}
 
@@ -19,6 +46,10 @@ export class ColumnDefinition {
 		this.attributes[key] = value
 
 		return this
+	}
+
+	build() {
+		return new ColumnDefinition(this.attributes)
 	}
 
 	// # Dynamic Methods

@@ -77,9 +77,12 @@ export class QueryGrammar extends BaseGrammar implements QueryGrammarType {
 			// function for the component which is responsible for making the SQL.
 			if ((query as any)[component]) {
 				const method = 'compile' + ucfirst(component)
-				sql[component] = (this as any)[method](query, (query as any)[component])
+				if (typeof (this as any)[method] === 'function') {
+					sql[component] = (this as any)[method](query, (query as any)[component])
+				}
 			}
 		})
+
 		return sql
 	}
 
