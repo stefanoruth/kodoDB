@@ -5,5 +5,7 @@ export class Command {
 	from: any
 	length?: number
 
-	name(value: any) {}
+	name(value: any) {
+		//
+	}
 }

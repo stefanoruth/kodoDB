@@ -502,10 +502,11 @@ export class Blueprint {
 	}
 
 	removeColumn(name: string) {
-		// this.columns = array_values(array_filter(this.columns, function ($c) use($name) {
-		//     return $c['name'] != $name;
-		// }));
-		// return $this;
+		this.columns = this.columns.filter(column => {
+			return column.name !== name
+		})
+
+		return this
 	}
 
 	getTable() {

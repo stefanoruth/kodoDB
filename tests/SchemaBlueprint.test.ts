@@ -93,7 +93,7 @@ describe('SchemaBlueprint', () => {
 		})
 	})
 
-	describe('dd', () => {
+	describe('tables', () => {
 		test('defaultCurrentTimestamp', () => {
 			const blueprint = new Blueprint('users', table => {
 				table.timestamp('created').useCurrent()
@@ -103,6 +103,32 @@ describe('SchemaBlueprint', () => {
 
 			expect(blueprint.toSql(connection, new MySqlSchemaGrammar())).toEqual([
 				'alter table `users` add `created` timestamp default CURRENT_TIMESTAMP not null',
+			])
+		})
+
+		test('unsignedDecimalTable', () => {
+			const blueprint = new Blueprint('users', table => {
+				table.unsignedDecimal('money', 10, 2).useCurrent()
+			})
+
+			const connection = Mock.of<Connection>()
+
+			expect(blueprint.toSql(connection, new MySqlSchemaGrammar())).toEqual([
+				'alter table `users` add `money` decimal(10, 2) unsigned not null',
+			])
+		})
+
+		test('removeColumn', () => {
+			const blueprint = new Blueprint('users', table => {
+				table.string('foo')
+				table.string('remove_this')
+				table.removeColumn('remove_this')
+			})
+
+			const connection = Mock.of<Connection>()
+
+			expect(blueprint.toSql(connection, new MySqlSchemaGrammar())).toEqual([
+				'alter table `users` add `foo` varchar(255) not null',
 			])
 		})
 	})

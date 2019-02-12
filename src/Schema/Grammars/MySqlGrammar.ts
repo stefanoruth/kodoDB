@@ -370,7 +370,7 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	 * Create the column definition for a decimal type.
 	 */
 	protected typeDecimal(column: ColumnDefinition) {
-		return `double(${column.total}, ${column.places})`
+        return `decimal(${column.total}, ${column.places})`
 	}
 
 	/**
