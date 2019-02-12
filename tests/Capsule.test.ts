@@ -6,7 +6,7 @@ beforeAll(() => {
 	capsuleObject = new Capsule()
 })
 
-describe('kodo-db', () => {
+describe('Capsule', () => {
 	it('Capsule can set instance as global', () => {
 		expect(Capsule.instance).not.toBeDefined()
 		capsuleObject.setAsGlobal()

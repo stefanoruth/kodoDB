@@ -17,7 +17,7 @@ export class Collection {
 		return this.items[0]
 	}
 
-	map(callbackfn: (value: any, index: number, array: any[]) => any, thisArg?: any): Collection {
+	map(callbackfn: (value: any, index: number, items: any[]) => any): Collection {
 		return new Collection(this.items.map(callbackfn))
 	}
 

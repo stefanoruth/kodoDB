@@ -48,7 +48,7 @@ export class BaseGrammar {
 			.join('.')
 	}
 
-	wrapValue(value: string): string {
+	protected wrapValue(value: string): string {
 		if (value !== '*') {
 			return `"${value.replace('"', '""')}"`
 		}
@@ -68,7 +68,11 @@ export class BaseGrammar {
 		return value instanceof Expression ? this.getValue(value) : '?'
 	}
 
-	quoteString(value: string | string[]): string {
+	quoteString(value: string | string[] | undefined): string {
+		if (value === undefined) {
+			return ''
+		}
+
 		if (value instanceof Array) {
 			// Todo
 			return ''

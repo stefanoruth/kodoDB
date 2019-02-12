@@ -140,6 +140,13 @@ export abstract class Connection implements Partial<ConnnectionInterface>, Local
 		return this.pdo
 	}
 
+	/**
+	 * Get an option from the configuration options.
+	 */
+	getConfig(option?: string) {
+		return this.config
+	}
+
 	protected getPdoForSelect() {
 		return this.getPdo()
 	}

@@ -1,55 +1,75 @@
-interface ColumnOptions {
-	name: string
-	type: string
-	after: string
-	always: boolean
-	autoIncrement: boolean
-	change: boolean
-	charset: string
-	collation: string
-	comment: string
-	default: any
-	first: boolean
-	generatedAs: string
-	nullable: boolean
-	primary: boolean
-	spatialIndex: boolean
-	storedAs: string
-	unique: boolean
-	unsigned: boolean
-	useCurrent: boolean
-	virtualAs: string
-}
+export class ColumnDefinition {
+	name?: string
+	type?: string
+	index?: string
+	after?: string
+	always?: boolean
+	autoIncrement?: boolean
+	change?: boolean
+	charset?: string
+	collation?: string
+	comment?: string
+	default?: any
+	first?: boolean
+	generatedAs?: string
+	nullable?: boolean
+	primary?: boolean
+	spatialIndex?: boolean
+	storedAs?: string
+	unique?: boolean
+	unsigned?: boolean
+	useCurrent?: boolean
+	virtualAs?: string
+	length?: number
+	total?: number
+	places?: number
+	allowed?: string
+	precision?: number
+	srid?: number
 
-export class ColumnDefinition implements Partial<ColumnOptions> {
-	constructor(attributes: Partial<ColumnOptions>) {
+	constructor(attributes = {}) {
 		for (const key in attributes) {
 			if (attributes.hasOwnProperty(key)) {
 				;(this as any)[key] = (attributes as any)[key]
 			}
 		}
 	}
-}
 
-export class ColumnBuilder {
-	protected attributes: any
+	set(key: string, value: any = true) {
+		if (!this.hasOwnProperty(key)) {
+			throw new Error(`${this.constructor.name} is missing key: ${key}`)
+		}
 
-	constructor(attributes: Partial<ColumnOptions>) {
-		this.attributes = attributes
-	}
-
-	getAttributes() {
-		return this.attributes
-	}
-
-	protected setAttribute(key: string, value: any = true) {
-		this.attributes[key] = value
+		;(this as any)[key] = value
 
 		return this
 	}
+}
+
+export class ColumnBuilder {
+	name?: string
+	protected column: ColumnDefinition
+
+	constructor(attributes = {}) {
+		this.column = new ColumnDefinition(attributes)
+	}
+
+	getAttributes() {
+		return this.column
+	}
 
 	build() {
-		return new ColumnDefinition(this.attributes)
+		return this.getAttributes()
+	}
+
+	protected setAttribute(key: string, value: any = true) {
+		if (key === 'name') {
+			this.name = key
+		}
+
+		;(this.column as any)[key] = value
+
+		return this
 	}
 
 	// # Dynamic Methods
