@@ -19,7 +19,5 @@ export class MySqlConnection extends Connection {
 
 	getDefaultQueryGrammar(): MySqlQueryGrammar {
 		return new MySqlQueryGrammar()
-    }
-
-
+	}
 }

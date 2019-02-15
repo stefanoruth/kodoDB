@@ -7,8 +7,16 @@ import { QueryProcessor } from '../Query/Processors/QueryProcessor'
 import { QueryException } from '../Exceptions/QueryException'
 import { detectsLostConnections } from '../Utils'
 import { Expression } from '../Query/Expression'
+import { BaseGrammar } from '../BaseGrammar'
+import {
+	TransactionBeginning,
+	TransactionCommitted,
+	TransactionRolledBack,
+	QueryExecuted,
+	StatementPrepared,
+} from '../Events'
 
-interface ConnnectionInterface {
+export interface ConnectionInterface {
 	table(table: string): QueryBuilder
 	raw(value: any): Expression
 	selectOne(query: string, bindings: any[], useReadPdo: boolean): any
@@ -20,7 +28,7 @@ interface ConnnectionInterface {
 	statement(query: string, bindings: any[]): boolean
 	affectingStatement(query: string, bindings: any[]): number
 	unprepared(query: string): boolean
-	prepareBindings(bindings: any[]): []
+	prepareBindings(bindings: any[]): any[]
 	transaction(callback: () => void, attempts: number): any
 	beginTransaction(): void
 	commit(): void
@@ -29,169 +37,846 @@ interface ConnnectionInterface {
 	pretend(callback: () => void): []
 }
 
-interface Local {
-	getSchemaBuilder: () => SchemaBuilder
-	getDefaultSchemaGrammar: () => SchemaGrammar
-}
+export abstract class Connection implements ConnectionInterface {
+	/**
+	 * The active PDO connection.
+	 */
+	protected pdo: () => void // PDO?
 
-export abstract class Connection implements Partial<ConnnectionInterface>, Local {
-	protected config: any
-	protected schemaGrammar: SchemaGrammar
+	/**
+	 * The active PDO connection used for reads.
+	 */
+	protected readPdo?: () => void // PDO?
+
+	/**
+	 * The name of the connected database.
+	 */
+	protected database: string
+
+	/**
+	 * The table prefix for the connection.
+	 */
+	protected tablePrefix: string = ''
+
+	/**
+	 * The database connection configuration options.
+	 */
+	protected config = []
+
+	/**
+	 * The reconnector instance for the connection.
+	 */
+	protected reconnector?: (connection: this) => void
+
+	/**
+	 * The query grammar implementation.
+	 */
 	protected queryGrammar: QueryGrammar
-	protected postProcessor: QueryProcessor
-	protected transactions = 0
-	protected reconnector?: () => any
-	protected pretending = false
-	protected pdo?: any
 
-	constructor(config: ConnectionConfig) {
+	/**
+	 * The schema grammar implementation.
+	 */
+	protected schemaGrammar?: SchemaGrammar
+
+	/**
+	 * The query post processor implementation.
+	 */
+	protected postProcessor: QueryProcessor
+
+	/**
+	 * The event dispatcher instance.
+	 */
+	protected events: any // Illuminate\Contracts\Events\Dispatcher
+
+	/**
+	 * The default fetch mode of the connection.
+	 */
+	protected fetchMode?: number
+
+	/**
+	 * The number of active transactions.
+	 */
+	protected transactions: number = 0
+
+	/**
+	 * Indicates if changes have been made to the database.
+	 */
+	protected recordsModified: number | boolean = false
+
+	/**
+	 * All of the queries run against the connection.
+	 */
+	protected queryLog: any[] = []
+
+	/**
+	 * Indicates whether queries are being logged.
+	 */
+	protected loggingQueries: boolean = false
+
+	/**
+	 * Indicates if the connection is in a "dry run".
+	 */
+	protected pretending: boolean = false
+
+	/**
+	 * The instance of Doctrine connection.
+	 */
+	protected doctrineConnection: any // Doctrine\DBAL\Connection
+
+	/**
+	 * The connection resolvers.
+	 */
+	protected static resolvers = []
+
+	/**
+	 * Create a new database connection instance.
+	 */
+	constructor(pdo: () => void, database: string = '', tablePrefix: string = '', config = []) {
+		this.pdo = pdo
+		// First we will setup the default properties. We keep track of the DB
+		// name we are connected to since it is needed when some reflective
+		// type commands are run such as checking whether a table exists.
+		this.database = database
+		this.tablePrefix = tablePrefix
 		this.config = config
 
-		this.schemaGrammar = this.getDefaultSchemaGrammar()
+		// We need to initialize a query grammar and the query post processors
+		// which are both very important parts of the database abstractions
+		// so we initialize these to their default values while starting.
 		this.queryGrammar = this.getDefaultQueryGrammar()
 		this.postProcessor = this.getDefaultPostProcessor()
 	}
 
-	getSchemaGrammar() {
-		return this.schemaGrammar
+	/**
+	 * Set the query grammar to the default implementation.
+	 */
+	useDefaultQueryGrammar(): void {
+		this.queryGrammar = this.getDefaultQueryGrammar()
 	}
 
-	table(table: string) {
+	/**
+	 * Get the default query grammar instance.
+	 *
+	 * @return \Illuminate\Database\Query\Grammars\Grammar
+	 */
+	protected getDefaultQueryGrammar(): QueryGrammar {
+		return new QueryGrammar()
+	}
+
+	/**
+	 * Set the schema grammar to the default implementation.
+	 */
+	useDefaultSchemaGrammar(): void {
+		this.schemaGrammar = this.getDefaultSchemaGrammar()
+	}
+	/**
+	 * Get the default schema grammar instance.
+	 *
+	 * @return \Illuminate\Database\Schema\Grammars\Grammar
+	 */
+	protected abstract getDefaultSchemaGrammar(): SchemaGrammar
+
+	/**
+	 * Set the query post processor to the default implementation.
+	 */
+	useDefaultPostProcessor() {
+		this.postProcessor = this.getDefaultPostProcessor()
+	}
+
+	/**
+	 * Get the default post processor instance.
+	 */
+	protected getDefaultPostProcessor(): QueryProcessor {
+		return new QueryProcessor()
+	}
+
+	/**
+	 * Get a schema builder instance for the connection.
+	 */
+	getSchemaBuilder(): SchemaBuilder {
+		if (!this.schemaGrammar) {
+			this.useDefaultSchemaGrammar()
+		}
+		return new SchemaBuilder(this)
+	}
+
+	/**
+	 * Begin a fluent query against a database table.
+	 */
+	table(table: string): QueryBuilder {
 		return this.query().from(table)
 	}
 
-	query() {
+	/**
+	 * Get a new query builder instance.
+	 */
+	query(): QueryBuilder {
 		return new QueryBuilder(this, this.getQueryGrammar(), this.getPostProcessor())
 	}
 
-	getQueryGrammar() {
-		return this.queryGrammar
+	/**
+	 * Run a select statement and return a single result.
+	 */
+	selectOne(query: string, bindings: any[] = [], useReadPdo: boolean = true): any {
+		const records = this.select(query, bindings, useReadPdo)
+		return records.shift()
 	}
 
-	getPostProcessor() {
-		return this.postProcessor
+	/**
+	 * Run a select statement against the database.
+	 */
+	selectFromWriteConnection(query: string, bindings: any[] = []): [] {
+		return this.select(query, bindings, false)
 	}
 
-	select(query: string, bindings: any) {
+	/**
+	 * Run a select statement against the database.
+	 */
+	select(query: string, bindings: any[] = [], useReadPdo: boolean = true): [] {
 		return this.run(query, bindings, () => {
-			if (this.pretending) {
+			if (this.isPretending()) {
 				return []
 			}
-
-			const statement = this.prepared(this.getPdoForSelect().prepare(query))
-
+			// For select statements, we'll simply execute the query and return an array
+			// of the database result set. Each element in the array will be a single
+			// row from the database table, and will either be an array or objects.
+			const statement = this.prepared(this.getPdoForSelect(useReadPdo).prepare(query))
 			this.bindValues(statement, this.prepareBindings(bindings))
-
 			statement.execute()
-
 			return statement.fetchAll()
 		})
 	}
 
-	run(query: string, bindings: [], callback: () => any) {
-		this.reconnectIfMissingConnection()
+	/**
+	 * Run a select statement against the database and returns a generator.
+	 */
+	cursor(query: string, bindings: any[] = [], useReadPdo = true): Generator {
+		const finalStatement = this.run(query, bindings, () => {
+			if (this.isPretending()) {
+				return []
+			}
+			// First we will create a statement for the query. Then, we will set the fetch
+			// mode and prepare the bindings for the query. Once that's done we will be
+			// ready to execute the query against the database and return the cursor.
+			const statement = this.prepared(this.getPdoForSelect(useReadPdo).prepare(query))
 
-		const start = +new Date()
-		let result
+			this.bindValues(statement, this.prepareBindings(bindings))
+			// Next, we'll execute the query against the database and return the statement
+			// so we can return the cursor. The cursor will use a PHP generator to give
+			// back one row at a time without using a bunch of memory to render them.
+			statement.execute()
+			return statement
+		})
 
-		try {
-			result = this.runQueryCallback(query, bindings, callback)
-		} catch (error) {
-			result = this.handleQueryException(error, query, bindings, callback)
-		}
+		let record
+		do {
+			record = finalStatement.fetch()
+			if (record) {
+				yield record
+			}
+		} while (record)
+	}
 
-		this.logQuery(query, bindings, this.getElapsedTime(start))
+	/**
+	 * Configure the PDO prepared statement.
+	 */
+	protected prepared(statement: any): any {
+		// PDOStatement
+		statement.setFetchMode(this.fetchMode)
+		this.event(new StatementPrepared(this, statement))
+		return statement
+	}
 
+	/**
+	 * Get the PDO connection to use for a select query.
+	 *
+	 * @param  bool  useReadPdo
+	 * @return \PDO
+	 */
+	protected getPdoForSelect(useReadPdo = true) {
+		return useReadPdo ? this.getReadPdo() : this.getPdo()
+	}
+
+	/**
+	 * Run an insert statement against the database.
+	 */
+	insert(query: string, bindings: any[] = []): boolean {
+		return this.statement(query, bindings)
+	}
+
+	/**
+	 * Run an update statement against the database.
+	 */
+	update(query: string, bindings: any[] = []): number {
+		return this.affectingStatement(query, bindings)
+	}
+
+	/**
+	 * Run a delete statement against the database.
+	 */
+	delete(query: string, bindings: any[] = []): number {
+		return this.affectingStatement(query, bindings)
+	}
+
+	/**
+	 * Execute an SQL statement and return the boolean result.
+	 */
+	statement(query: string, bindings: any[] = []): boolean {
+		return this.run(query, bindings, () => {
+			if (this.isPretending()) {
+				return true
+			}
+			const statement = this.getPdo().prepare(query)
+			this.bindValues(statement, this.prepareBindings(bindings))
+			this.recordsHaveBeenModified()
+			return statement.execute()
+		})
+	}
+
+	/**
+	 * Run an SQL statement and get the number of rows affected.
+	 */
+	affectingStatement(query: string, bindings: any[] = []): number {
+		return this.run(query, bindings, () => {
+			if (this.isPretending()) {
+				return 0
+			}
+			// For update or delete statements, we want to get the number of rows affected
+			// by the statement and return that back to the developer. We'll first need
+			// to execute the statement and then we'll use PDO to fetch the affected.
+			const statement = this.getPdo().prepare(query)
+			this.bindValues(statement, this.prepareBindings(bindings))
+			statement.execute()
+			const count = statement.rowCount()
+			this.recordsHaveBeenModified(count > 0)
+			return count
+		})
+	}
+
+	/**
+	 * Run a raw, unprepared query against the PDO connection.
+	 */
+	unprepared(query: string): boolean {
+		return this.run(query, [], (query: string) => {
+			if (this.isPretending()) {
+				return true
+			}
+			const change = this.getPdo().exec(query) !== false
+			this.recordsHaveBeenModified(change)
+			return change
+		})
+	}
+
+	/**
+	 * Execute the given callback in "dry run" mode.
+	 */
+	pretend(callback: (connection: Connection) => any): [] {
+		return this.withFreshQueryLog(() => {
+			this.pretending = true
+			// Basically to make the database connection "pretend", we will just return
+			// the default values for all the query methods, then we will return an
+			// array of queries that were "executed" within the Closure callback.
+			callback(this)
+			this.pretending = false
+			return this.queryLog
+		})
+	}
+
+	/**
+	 * Execute the given callback in "dry run" mode.
+	 */
+	protected withFreshQueryLog(callback: () => any): [] {
+		const loggingQueries = this.loggingQueries
+		// First we will back up the value of the logging queries property and then
+		// we'll be ready to run callbacks. This query log will also get cleared
+		// so we will have a new log of all the queries that are executed now.
+		this.enableQueryLog()
+		this.queryLog = []
+		// Now we'll execute this callback and capture the result. Once it has been
+		// executed we will restore the value of query logging and give back the
+		// value of the callback so the original callers can have the results.
+		const result = callback()
+		this.loggingQueries = loggingQueries
 		return result
 	}
 
-	logQuery(query: string, bindings: [], time?: number) {
-		// Todo
+	/**
+	 * Bind values to their parameters in the given statement.
+	 */
+	bindValues(statement: string, bindings: any[] = []): void {
+		// PDOStatement
+		bindings.forEach((value: any, key: number) => {
+			// statement.bindValue(
+			//     is_string(key) ? key : key + 1, value,
+			//     is_int(value) ? PDO :: PARAM_INT : PDO:: PARAM_STR
+			// )
+		})
 	}
 
-	reconnectIfMissingConnection() {
-		// Todo
-	}
+	/**
+	 * Prepare the query bindings for execution.
+	 */
+	prepareBindings(bindings: any[] = []): any[] {
+		// const grammar = this.getQueryGrammar();
 
-	prepareBindings(bindings: []) {
-		// Todo
+		bindings.forEach((value: any, key: number) => {
+			// We need to transform all instances of DateTimeInterface into the actual
+			// date string. Each query grammar maintains its own date string format
+			// so we'll just ask the grammar for the format to get from the date.
+			// if (value instanceof DateTimeInterface) {
+			//     bindings[key] = value.format(grammar.getDateFormat());
+			// }
+			if (typeof value === 'boolean') {
+				bindings[key] = Number(value)
+			}
+		})
 
 		return bindings
 	}
 
-	bindValues(statement: any, bindings: []) {
-		// Todo
+	/**
+	 * Run a SQL statement and log its execution context.
+	 */
+	protected run(query: string, bindings: any[] = [], callback: (query: string, bindings: any[]) => any): any {
+		this.reconnectIfMissingConnection()
+		const start = new Date().getTime()
+		// Here we will run this query. If an exception occurs we'll determine if it was
+		// caused by a connection that has been lost. If that is the cause, we'll try
+		// to re-establish connection and re-run the query with a fresh connection.
+		let result
+		try {
+			result = this.runQueryCallback(query, bindings, callback)
+		} catch (err) {
+			if (err instanceof QueryException) {
+				result = this.handleQueryException(err, query, bindings, callback)
+			} else {
+				throw err
+			}
+		}
+		// Once we have run the query we will calculate the time that it took to run and
+		// then log the query, bindings, and execution time so we will report them on
+		// the event that the developer needs them. We'll log time in milliseconds.
+		this.logQuery(query, bindings, this.getElapsedTime(start))
+		return result
 	}
 
-	reconnect() {
-		if (this.reconnector) {
-			// Todo reconnect
+	/**
+	 * Run a SQL statement.
+	 */
+	protected runQueryCallback(
+		query: string,
+		bindings: any[] = [],
+		callback: (query: string, bindings: any[]) => any
+	): any {
+		// To execute the statement, we'll simply call the callback, which will actually
+		// run the SQL against the PDO connection. Then we can calculate the time it
+		// took to execute and log the query SQL, bindings and time in our memory.
+		try {
+			return callback(query, bindings)
+		} catch (err) {
+			// If an exception occurs when attempting to run a query, we'll format the error
+			// message to include the bindings with SQL, which will make this exception a
+			// lot more helpful to the developer instead of just the database's errors.
+			throw new QueryException(query, this.prepareBindings(bindings), err)
 		}
+	}
 
+	/**
+	 * Log a query in the connection's query log.
+	 */
+	logQuery(query: string, bindings: any[] = [], time?: number): void {
+		this.event(new QueryExecuted(query, bindings, time, this))
+		if (this.loggingQueries) {
+			this.queryLog.push({ query, bindings, time })
+		}
+	}
+
+	/**
+	 * Get the elapsed time since a given starting point.
+	 */
+	protected getElapsedTime(start: number): number {
+		return Math.round((new Date().getTime() - start) * 1000)
+	}
+
+	/**
+	 * Handle a query exception.
+	 */
+	protected handleQueryException(e: QueryException, query: string, bindings: any[], callback: () => any) {
+		if (this.transactions >= 1) {
+			throw e
+		}
+		return this.tryAgainIfCausedByLostConnection(e, query, bindings, callback)
+	}
+
+	/**
+	 * Handle a query exception that occurred during query execution.
+	 */
+	protected tryAgainIfCausedByLostConnection(e: QueryException, query: string, bindings: any[], callback: () => any) {
+		if (detectsLostConnections(e)) {
+			this.reconnect()
+			return this.runQueryCallback(query, bindings, callback)
+		}
+		throw e
+	}
+
+	/**
+	 * Reconnect to the database.
+	 */
+	reconnect(): void {
+		if (this.reconnector) {
+			this.doctrineConnection = null
+			return this.reconnector(this)
+		}
 		throw new Error('Lost connection and no reconnector available.')
 	}
 
-	statement(query: string, bindings: any[] = []): boolean {
-		// Todo
+	/**
+	 * Reconnect to the database if a PDO connection is missing.
+	 */
+	protected reconnectIfMissingConnection(): void {
+		if (!this.pdo) {
+			this.reconnect()
+		}
+	}
+	/**
+	 * Disconnect from the underlying PDO connection.
+	 */
+	disconnect(): void {
+		this.setPdo(null).setReadPdo(null)
+	}
+
+	/**
+	 * Register a database query listener with the connection.
+	 */
+	listen(callback: () => any): void {
+		if (this.events) {
+			this.events.listen(QueryExecuted, callback)
+		}
+	}
+
+	/**
+	 * Fire an event for this connection.
+	 */
+	protected fireConnectionEvent(event: string): [] | undefined {
+		if (!this.events) {
+			return
+		}
+		switch (event) {
+			case 'beganTransaction':
+				return this.events.dispatch(new TransactionBeginning(this))
+			case 'committed':
+				return this.events.dispatch(new TransactionCommitted(this))
+			case 'rollingBack':
+				return this.events.dispatch(new TransactionRolledBack(this))
+		}
+	}
+	/**
+	 * Fire the given event if possible.
+	 */
+	protected event(event: any): void {
+		if (this.events) {
+			this.events.dispatch(event)
+		}
+	}
+
+	/**
+	 * Get a new raw query expression.
+	 */
+	raw(value: any): Expression {
+		return new Expression(value)
+	}
+	/**
+	 * Indicate if any records have been modified.
+	 *
+	 * @param  bool  value
+	 * @return void
+	 */
+	recordsHaveBeenModified(value = true) {
+		if (!this.recordsModified) {
+			this.recordsModified = value
+		}
+	}
+	/**
+	 * Is Doctrine available?
+	 */
+	isDoctrineAvailable(): boolean {
+		// return class_exists('Doctrine\DBAL\Connection');
 		return false
 	}
 
+	/**
+	 * Get a Doctrine Schema Column instance.
+	 */
+	getDoctrineColumn(table: string, column: string) {
+		// \Doctrine\DBAL\Schema\Column
+		// const schema = this.getDoctrineSchemaManager();
+		// return schema.listTableDetails(table).getColumn(column);
+	}
+
+	/**
+	 * Get the Doctrine DBAL schema manager for the connection.
+	 */
+	getDoctrineSchemaManager() {
+		// \Doctrine\DBAL\Schema\AbstractSchemaManager
+		// return this.getDoctrineDriver().getSchemaManager(this.getDoctrineConnection());
+	}
+
+	/**
+	 * Get the Doctrine DBAL database connection instance.
+	 */
+	getDoctrineConnection() {
+		//\Doctrine\DBAL\Connection
+		// if (!this.doctrineConnection) {
+		//     const driver = this.getDoctrineDriver();
+
+		//     this.doctrineConnection = new DoctrineConnection({
+		//         pdo: this.getPdo(),
+		//         dbname: this.getConfig('database'),
+		//         driver: driver.getName(),
+		//     }, driver);
+		// }
+		return this.doctrineConnection
+	}
+
+	/**
+	 * Get the current PDO connection.
+	 */
 	getPdo() {
+		if (typeof this.pdo === 'function') {
+			return (this.pdo = this.pdo())
+		}
 		return this.pdo
+	}
+
+	/**
+	 * Get the current PDO connection used for reading.
+	 */
+	getReadPdo() {
+		if (this.transactions > 0) {
+			return this.getPdo()
+		}
+		if (this.recordsModified && this.getConfig('sticky')) {
+			return this.getPdo()
+		}
+		if (typeof this.readPdo === 'function') {
+			// return this.readPdo = this.readPdo()
+		}
+		return this.readPdo ? this.readPdo : this.getPdo()
+	}
+
+	/**
+	 * Set the PDO connection.
+	 */
+	setPdo(pdo?: () => void): this {
+		// PDO?
+		this.transactions = 0
+		this.pdo = pdo
+		return this
+	}
+
+	/**
+	 * Set the PDO connection used for reading.
+	 */
+	setReadPdo(pdo?: () => void): this {
+		// PDO?
+		this.readPdo = pdo
+		return this
+	}
+
+	/**
+	 * Set the reconnect instance on the connection.
+	 */
+	setReconnector(reconnector: () => void): this {
+		this.reconnector = reconnector
+		return this
+	}
+
+	/**
+	 * Get the database connection name.
+	 */
+	getName(): string {
+		return this.getConfig('name')
 	}
 
 	/**
 	 * Get an option from the configuration options.
 	 */
-	getConfig(option?: string) {
-		return this.config
+	getConfig(option?: string): string {
+		return Arr.get(this.config, option)
 	}
 
-	protected getPdoForSelect() {
-		return this.getPdo()
+	/**
+	 * Get the PDO driver name.
+	 */
+	getDriverName(): string {
+		return this.getConfig('driver')
 	}
 
-	protected prepared(statement: any) {
-		// Todo
-
-		return statement
+	/**
+	 * Get the query grammar used by the connection.
+	 */
+	getQueryGrammar(): QueryGrammar {
+		return this.queryGrammar
 	}
 
-	protected handleQueryException(error: Error, query: string, bindings: [], callback: () => any) {
-		if (this.transactions >= 1) {
-			throw error
-		}
-
-		return this.tryAgainIfCausedByLostConnection(error, query, bindings, callback)
+	/**
+	 * Set the query grammar used by the connection.
+	 */
+	setQueryGrammar(grammar: QueryGrammar): this {
+		this.queryGrammar = grammar
+		return this
 	}
 
-	protected tryAgainIfCausedByLostConnection(error: Error, query: string, bindings: [], callback: () => any) {
-		if (detectsLostConnections(error)) {
-			this.reconnect()
-
-			return this.runQueryCallback(query, bindings, callback)
-		}
-
-		throw error
+	/**
+	 * Get the schema grammar used by the connection.
+	 */
+	getSchemaGrammar(): SchemaGrammar {
+		return this.schemaGrammar
 	}
 
-	protected runQueryCallback(query: string, bindings: [], callback: () => any) {
-		try {
-			return callback()
-		} catch (error) {
-			throw new QueryException(query, this.prepareBindings(bindings), error)
-		}
+	/**
+	 * Set the schema grammar used by the connection.
+	 */
+	setSchemaGrammar(grammar: SchemaGrammar): this {
+		this.schemaGrammar = grammar
+		return this
 	}
 
-	protected getElapsedTime(start: number) {
-		return +new Date() - start
+	/**
+	 * Get the query post processor used by the connection.
+	 */
+	getPostProcessor(): QueryProcessor {
+		return this.postProcessor
 	}
 
-	abstract getSchemaBuilder(): SchemaBuilder
+	/**
+	 * Set the query post processor used by the connection.
+	 */
+	setPostProcessor(processor: QueryProcessor): this {
+		this.postProcessor = processor
+		return this
+	}
 
-	abstract getDefaultSchemaGrammar(): SchemaGrammar
+	/**
+	 * Get the event dispatcher used by the connection.
+	 */
+	getEventDispatcher(): any {
+		return this.events
+	}
 
-	abstract getDefaultQueryGrammar(): QueryGrammar
+	/**
+	 * Set the event dispatcher instance on the connection.
+	 */
+	setEventDispatcher(events: any): this {
+		this.events = events
+		return this
+	}
 
-	abstract getDefaultPostProcessor(): QueryProcessor
+	/**
+	 * Unset the event dispatcher for this connection.
+	 */
+	unsetEventDispatcher(): void {
+		this.events = null
+	}
+
+	/**
+	 * Determine if the connection in a "dry run".
+	 */
+	isPretending(): boolean {
+		return this.pretending === true
+	}
+
+	/**
+	 * Get the connection query log.
+	 */
+	getQueryLog(): any[] {
+		return this.queryLog
+	}
+
+	/**
+	 * Clear the query log.
+	 */
+	flushQueryLog(): void {
+		this.queryLog = []
+	}
+
+	/**
+	 * Enable the query log on the connection.
+	 */
+	enableQueryLog(): void {
+		this.loggingQueries = true
+	}
+
+	/**
+	 * Disable the query log on the connection.
+	 */
+	disableQueryLog(): void {
+		this.loggingQueries = false
+	}
+
+	/**
+	 * Determine whether we're logging queries.
+	 */
+	logging(): boolean {
+		return this.loggingQueries
+	}
+
+	/**
+	 * Get the name of the connected database.
+	 */
+	getDatabaseName(): string {
+		return this.database
+	}
+
+	/**
+	 * Set the name of the connected database.
+	 */
+	setDatabaseName(database: string): this {
+		this.database = database
+		return this
+	}
+
+	/**
+	 * Get the table prefix for the connection.
+	 */
+	getTablePrefix(): string {
+		return this.tablePrefix
+	}
+
+	/**
+	 * Set the table prefix in use by the connection.
+	 */
+	setTablePrefix(prefix: string): this {
+		this.tablePrefix = prefix
+		this.getQueryGrammar().setTablePrefix(prefix)
+		return this
+	}
+
+	/**
+	 * Set the table prefix and return the grammar.
+	 */
+	withTablePrefix(grammar: BaseGrammar): BaseGrammar {
+		grammar.setTablePrefix(this.tablePrefix)
+		return grammar
+	}
+
+	abstract transaction(callback: () => void, attempts: number): any
+	abstract beginTransaction(): void
+	abstract commit(): void
+	abstract rollBack(): void
+	abstract transactionLevel(): number
+
+	/**
+	 * Register a connection resolver.
+	 */
+	static resolverFor(driver: string, callback: () => void): void {
+		this.resolvers[driver] = callback
+	}
+
+	/**
+	 * Get the connection resolver for the given driver.
+	 */
+	static getResolver(driver: string): any {
+		return this.resolvers[driver]
+	}
 }
