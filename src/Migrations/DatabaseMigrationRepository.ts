@@ -1,4 +1,4 @@
-import { ConnectionResolverInterface } from '../Connections/ConnectionResolver'
+import { ConnectionResolverInterface, ConnectionResolver } from '../Connections/ConnectionResolver'
 import { QueryBuilder } from '../Query/QueryBuilder'
 import { Connection, ConnectionInterface } from '../Connections/Connection'
 
@@ -58,7 +58,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * The database connection resolver instance.
 	 */
-	protected resolver: ConnectionResolverInterface
+	protected resolver: ConnectionResolver
 
 	/**
 	 * The name of the migration table.
@@ -73,7 +73,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Create a new database migration repository instance.
 	 */
-	constructor(resolver: ConnectionResolverInterface, table: string) {
+	constructor(resolver: ConnectionResolver, table: string) {
 		this.tableName = table
 		this.resolver = resolver
 	}
@@ -192,14 +192,14 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	 * Get the connection resolver instance.
 	 *
 	 */
-	getConnectionResolver(): ConnectionResolverInterface {
+	getConnectionResolver(): ConnectionResolver {
 		return this.resolver
 	}
 
 	/**
 	 * Resolve the database connection instance.
 	 */
-	getConnection(): ConnectionInterface {
+	getConnection(): Connection {
 		return this.resolver.connection(this.connection)
 	}
 

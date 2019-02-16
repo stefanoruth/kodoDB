@@ -12,7 +12,10 @@ export abstract class Migration {
 	/**
 	 * Get the migration connection name.
 	 */
-	getConnection() {
-		return this.connection
+	getConnection(): string {
+		if (this.connection) {
+			return this.connection
+		}
+		return ''
 	}
 }

@@ -730,7 +730,10 @@ export abstract class Connection implements ConnectionInterface {
 	 * Get the schema grammar used by the connection.
 	 */
 	getSchemaGrammar(): SchemaGrammar {
-		return this.schemaGrammar
+		if (this.schemaGrammar) {
+			return this.schemaGrammar
+		}
+		return new SchemaGrammar()
 	}
 
 	/**
