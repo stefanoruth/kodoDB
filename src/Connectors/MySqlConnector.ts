@@ -18,6 +18,8 @@ export class MySqlConnector implements Connector {
 		connection.connect((error: Error) => {
 			if (error) {
 				console.log(error)
+			} else {
+				console.log('Mysql Connection established')
 			}
 		})
 
