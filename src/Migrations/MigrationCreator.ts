@@ -1,14 +1,15 @@
 import { studly } from '../Utils'
+import * as fs from 'fs'
 
 type tableEvent = (table: string) => any
 
 export class MigrationCreator {
-	protected files: string[]
+	protected files: typeof fs
 
 	protected postCreate: tableEvent[] = []
 
-	constructor(files: any) {
-		this.files = files
+	constructor(fileSystem: typeof fs) {
+		this.files = fileSystem
 	}
 
 	create(name: string, path: string, table: string, create: boolean = false): string {
@@ -19,7 +20,10 @@ export class MigrationCreator {
 		// various place-holders, save the file, and run the post create event.
 		const stub = this.getStub(table, create)
 
-		// this.files.put((path = this.getPath(name, path)), this.populateStub(name, stub, table))
+		path = this.getPath(name, path)
+		const content = this.populateStub(name, stub, table)
+
+		this.files.writeFileSync(path, content)
 
 		// Next, we will fire any hooks that are supposed to fire after a migration is
 		// created. Once that is done we'll be ready to return the full path to the
@@ -38,9 +42,16 @@ export class MigrationCreator {
 		// }
 	}
 
-	protected getStub(table: string, create: boolean): string {
-		// Todo
-		return ''
+	protected getStub(table?: string, create?: boolean): string {
+		if (table) {
+			return this.files.readFileSync(this.stubPath() + '/blank.stub').toString()
+		}
+		// We also have stubs for creating new tables and modifying existing tables
+		// to save the developer some typing when they are creating a new tables
+		// or modifying existing tables. We'll grab the appropriate stub here.
+		const stub = create ? 'create.stub' : 'update.stub'
+
+		return this.files.readFileSync(`${this.stubPath()}/${stub}`).toString()
 	}
 
 	protected populateStub(name: string, stub: string, table?: string): string {
@@ -74,15 +85,15 @@ export class MigrationCreator {
 		this.postCreate.push(callback)
 	}
 
-	protected getDatePrefix() {
+	protected getDatePrefix(): Date {
 		return new Date()
 	}
 
-	stubPath() {
-		return './path/to/stub'
+	stubPath(): string {
+		return __dirname + '/stubs'
 	}
 
-	getFilesystem() {
+	getFilesystem(): typeof fs {
 		return this.files
 	}
 }

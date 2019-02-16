@@ -3,7 +3,7 @@ import { SchemaGrammar } from './Grammars/SchemaGrammar'
 import { Blueprint } from './Blueprint'
 import { tap } from '../Utils'
 
-type BlueprintResolver = (table: string, callback: (blueprint: Blueprint, prefix: string) => void) => Blueprint
+type BlueprintResolver = (table: string, callback?: (blueprint: Blueprint) => void, prefix?: string) => Blueprint
 
 export class SchemaBuilder {
 	/**
@@ -45,8 +45,11 @@ export class SchemaBuilder {
 	 * Determine if the given table exists.
 	 */
 	hasTable(table: string): boolean {
-		table = this.connection.getTablePrefix().table
-		return this.connection.selectFromWriteConnection(this.grammar.compileTableExists(), [table]).length > 0
+		return (
+			this.connection.selectFromWriteConnection(this.grammar.compileTableExists(), [
+				this.connection.getTablePrefix() + table,
+			]).length > 0
+		)
 	}
 
 	/**
@@ -79,9 +82,8 @@ export class SchemaBuilder {
 	 * Get the data type for the given column name.
 	 */
 	getColumnType(table: string, column: string): string {
-		table = this.connection.getTablePrefix().table
 		return this.connection
-			.getDoctrineColumn(table, column)
+			.getDoctrineColumn(this.connection.getTablePrefix() + table, column)
 			.getType()
 			.getName()
 	}
@@ -90,11 +92,13 @@ export class SchemaBuilder {
 	 * Get the column listing for a given table.
 	 */
 	getColumnListing(table: string): string[] {
-		const results = this.connection.selectFromWriteConnection(
-			this.grammar.compileColumnListing(this.connection.getTablePrefix().table)
-		)
-
-		return this.connection.getPostProcessor().processColumnListing(results)
+		return this.connection
+			.getPostProcessor()
+			.processColumnListing(
+				this.connection.selectFromWriteConnection(
+					this.grammar.compileColumnListing(this.connection.getTablePrefix() + table)
+				)
+			)
 	}
 
 	/**
@@ -191,7 +195,7 @@ export class SchemaBuilder {
 		const prefix = this.connection.getConfig('prefix_indexes') ? this.connection.getConfig('prefix') : ''
 
 		if (this.resolver) {
-			// return this.resolver(table, callback, prefix)
+			return this.resolver(table, callback, prefix)
 		}
 		return new Blueprint(table, callback, prefix)
 	}

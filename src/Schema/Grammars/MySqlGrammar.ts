@@ -1,6 +1,6 @@
 import { SchemaGrammar } from './SchemaGrammar'
 import { Blueprint } from '../Blueprint'
-import { Command } from '../Command'
+import { SchemaCommand } from '../SchemaCommand'
 import { Connection } from '../../Connections/Connection'
 import { ColumnDefinition } from '../ColumnDefinition'
 
@@ -45,7 +45,7 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile a create table command.
 	 */
-	compileCreate(blueprint: Blueprint, command: Command, connection: Connection): string {
+	compileCreate(blueprint: Blueprint, command: SchemaCommand, connection: Connection): string {
 		let sql: string = this.compileCreateTable(blueprint, command, connection)
 
 		// Once we have the primary SQL, we can add the encoding option to the SQL for
@@ -62,7 +62,7 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Create the main create table clause.
 	 */
-	protected compileCreateTable(blueprint: Blueprint, command: Command, connection: Connection): string {
+	protected compileCreateTable(blueprint: Blueprint, command: SchemaCommand, connection: Connection): string {
 		return `${blueprint.temporary ? 'create temporary' : 'create'} table ${this.wrapTable(
 			blueprint
 		)} (${this.getColumns(blueprint).join(', ')})`
@@ -117,7 +117,7 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile an add column command.
 	 */
-	compileAdd(blueprint: Blueprint, command: Command): string {
+	compileAdd(blueprint: Blueprint, command: SchemaCommand): string {
 		const columns = this.prefixArray('add', this.getColumns(blueprint))
 
 		return `alter table ${this.wrapTable(blueprint)} ${columns.join(', ')}`
@@ -126,8 +126,8 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile a primary key command.
 	 */
-	compilePrimary(blueprint: Blueprint, command: Command): string {
-		command.name(null)
+	compilePrimary(blueprint: Blueprint, command: SchemaCommand): string {
+		command.name = ''
 
 		return this.compileKey(blueprint, command, 'primary key')
 	}
@@ -135,29 +135,28 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile a unique key command.
 	 */
-	compileUnique(blueprint: Blueprint, command: Command): string {
+	compileUnique(blueprint: Blueprint, command: SchemaCommand): string {
 		return this.compileKey(blueprint, command, 'unique')
 	}
 
 	/**
 	 * Compile a plain index key command.
 	 */
-	compileIndex(blueprint: Blueprint, command: Command) {
+	compileIndex(blueprint: Blueprint, command: SchemaCommand) {
 		return this.compileKey(blueprint, command, 'index')
 	}
 
 	/**
 	 * Compile a spatial index key command.
 	 */
-	compileSpatialIndex(blueprint: Blueprint, command: Command) {
+	compileSpatialIndex(blueprint: Blueprint, command: SchemaCommand) {
 		return this.compileKey(blueprint, command, 'spatial index')
 	}
 
 	/**
 	 * Compile an index creation command.
 	 */
-	protected compileKey(blueprint: Blueprint, command: any, type: string): string {
-		console.log(command)
+	protected compileKey(blueprint: Blueprint, command: SchemaCommand, type: string): string {
 		return `alter table ${this.wrapTable(blueprint)} add ${type} ${this.wrap(command.index)}${
 			command.algorithm ? ` using {command.algorithm}` : ''
 		}(${this.columnize(command.columns)})`
@@ -166,21 +165,21 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile a drop table command.
 	 */
-	compileDrop(blueprint: Blueprint, command: Command) {
+	compileDrop(blueprint: Blueprint, command: SchemaCommand) {
 		return 'drop table ' + this.wrapTable(blueprint)
 	}
 
 	/**
 	 * Compile a drop table (if exists) command.
 	 */
-	compileDropIfExists(blueprint: Blueprint, command: Command) {
+	compileDropIfExists(blueprint: Blueprint, command: SchemaCommand) {
 		return 'drop table if exists ' + this.wrapTable(blueprint)
 	}
 
 	/**
 	 * Compile a drop column command.
 	 */
-	compileDropColumn(blueprint: Blueprint, command: Command) {
+	compileDropColumn(blueprint: Blueprint, command: SchemaCommand) {
 		const columns = this.prefixArray('drop', this.wrapArray(command.columns))
 
 		return `alter table ${this.wrapTable(blueprint)} ${columns.join(', ')}`
@@ -189,49 +188,49 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	/**
 	 * Compile a drop primary key command.
 	 */
-	compileDropPrimary(blueprint: Blueprint, command: Command) {
+	compileDropPrimary(blueprint: Blueprint, command: SchemaCommand) {
 		return `alter table ${this.wrapTable(blueprint)} drop primary key`
 	}
 
 	/**
 	 * Compile a drop unique key command.
 	 */
-	compileDropUnique(blueprint: Blueprint, command: Command) {
+	compileDropUnique(blueprint: Blueprint, command: SchemaCommand) {
 		return `alter table ${this.wrapTable(blueprint)} drop index ${this.wrap(command.index)}`
 	}
 
 	/**
 	 * Compile a drop index command.
 	 */
-	compileDropIndex(blueprint: Blueprint, command: Command) {
+	compileDropIndex(blueprint: Blueprint, command: SchemaCommand) {
 		return `alter table ${this.wrapTable(blueprint)} drop index ${this.wrap(command.index)}`
 	}
 
 	/**
 	 * Compile a drop spatial index command.
 	 */
-	compileDropSpatialIndex(blueprint: Blueprint, command: Command) {
+	compileDropSpatialIndex(blueprint: Blueprint, command: SchemaCommand) {
 		return this.compileDropIndex(blueprint, command)
 	}
 
 	/**
 	 * Compile a drop foreign key command.
 	 */
-	compileDropForeign(blueprint: Blueprint, command: Command) {
+	compileDropForeign(blueprint: Blueprint, command: SchemaCommand) {
 		return `alter table ${this.wrapTable(blueprint)} drop foreign key ${this.wrap(command.index)}`
 	}
 
 	/**
 	 * Compile a rename table command.
 	 */
-	compileRename(blueprint: Blueprint, command: Command) {
+	compileRename(blueprint: Blueprint, command: SchemaCommand) {
 		return `rename table ${this.wrapTable(blueprint)} to ${this.wrapTable(command.to)}`
 	}
 
 	/**
 	 * Compile a rename index command.
 	 */
-	compileRenameIndex(blueprint: Blueprint, command: Command) {
+	compileRenameIndex(blueprint: Blueprint, command: SchemaCommand) {
 		return `alter table ${this.wrapTable(blueprint)} rename index ${this.wrap(command.from)} to ${this.wrap(
 			command.to
 		)}`
@@ -370,7 +369,7 @@ export class MySqlSchemaGrammar extends SchemaGrammar {
 	 * Create the column definition for a decimal type.
 	 */
 	protected typeDecimal(column: ColumnDefinition) {
-        return `decimal(${column.total}, ${column.places})`
+		return `decimal(${column.total}, ${column.places})`
 	}
 
 	/**

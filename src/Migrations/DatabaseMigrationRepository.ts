@@ -1,6 +1,6 @@
 import { ConnectionResolverInterface } from '../Connections/ConnectionResolver'
 import { QueryBuilder } from '../Query/QueryBuilder'
-import { Connection } from '../Connections/Connection'
+import { Connection, ConnectionInterface } from '../Connections/Connection'
 
 export interface MigrationRepositoryInterface {
 	/**
@@ -199,7 +199,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Resolve the database connection instance.
 	 */
-	getConnection(): Connection {
+	getConnection(): ConnectionInterface {
 		return this.resolver.connection(this.connection)
 	}
 

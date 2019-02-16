@@ -126,7 +126,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * The connection resolvers.
 	 */
-	protected static resolvers = []
+	protected static resolvers: { [key: string]: any } = {}
 
 	/**
 	 * Create a new database connection instance.
@@ -625,7 +625,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Get the Doctrine DBAL database connection instance.
 	 */
 	getDoctrineConnection() {
-		//\Doctrine\DBAL\Connection
+		// \Doctrine\DBAL\Connection
 		// if (!this.doctrineConnection) {
 		//     const driver = this.getDoctrineDriver();
 

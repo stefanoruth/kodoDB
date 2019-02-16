@@ -21,7 +21,7 @@ export class ConnectionResolver implements ConnectionResolverInterface {
 	/**
 	 * All of the registered connections.
 	 */
-	protected connections: { [key: string]: Connection } = {}
+	protected connections: { [key: string]: ConnectionInterface } = {}
 
 	/**
 	 * The default connection name.

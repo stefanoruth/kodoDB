@@ -3,16 +3,7 @@ import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection } from '../Utils/Collection'
 import { Expression } from './Expression'
-
-interface Bindings {
-	select: string[]
-	from: string[]
-	join: string[]
-	where: string[]
-	having: string[]
-	order: string[]
-	union: string[]
-}
+import { Bindings } from './Bindings'
 
 export interface QueryBuilderType {
 	connection: Connection
@@ -151,7 +142,7 @@ export class QueryBuilder implements QueryBuilderType {
 		return this.grammar.compileSelect(this)
 	}
 
-	getBindings() {
+	getBindings(): Bindings {
 		return this.bindings
 	}
 
@@ -170,7 +161,7 @@ export class QueryBuilder implements QueryBuilderType {
 	}
 
 	protected runSelect() {
-		return this.connection.select(this.toSql(), this.getBindings())
+		return this.connection.select(this.toSql(), []) // (this.getBindings())
 	}
 
 	select(columns: string[] = ['*']) {

@@ -2,19 +2,20 @@ import { Connection } from '../Connections/Connection'
 import { SchemaGrammar } from './Grammars/SchemaGrammar'
 import { SchemaBuilder } from './SchemaBuilder'
 import { ColumnDefinition, ColumnBuilder } from './ColumnDefinition'
+import { SchemaCommand } from './SchemaCommand'
 import { tap, ucfirst, lcfirst } from '../Utils'
 
 export class Blueprint {
 	protected table: string
 	protected prefix: string
 	protected columns: ColumnDefinition[] = []
-	protected commands: ColumnBuilder[] = []
+	protected commands: SchemaCommand[] = []
 	engine?: string
 	charset?: string
 	collation?: any
 	temporaryState: boolean = false
 
-	constructor(table: string, callback?: (blueprint: Blueprint) => void, prefix = '') {
+	constructor(table: string, callback?: (blueprint: Blueprint) => void, prefix: string = '') {
 		this.table = table
 		this.prefix = prefix
 
@@ -39,18 +40,16 @@ export class Blueprint {
 		// the blueprint element, so we'll just call that compilers function.
 		this.ensureCommandsAreValid(connection)
 
-		this.commands
-			.map(builder => builder.build())
-			.forEach(command => {
-				const method = 'compile' + ucfirst(command.name)
-				if ((grammar as any)[method]) {
-					const sql = (grammar as any)[method](this, command, connection)
+		this.commands.forEach(command => {
+			const method = 'compile' + ucfirst(command.name)
+			if ((grammar as any)[method]) {
+				const sql = (grammar as any)[method](this, command, connection)
 
-					if (sql) {
-						statements.push(sql)
-					}
+				if (sql) {
+					statements.push(sql)
 				}
-			})
+			}
+		})
 
 		return statements
 	}
@@ -108,14 +107,14 @@ export class Blueprint {
 
 	addFluentCommands(grammar: SchemaGrammar) {
 		this.columns.forEach((column: ColumnDefinition) => {
-			grammar.getFluentCommands().forEach((commandName: string) => {
-				const attributeName: string = lcfirst(commandName)
+			grammar.getFluentCommands().forEach((command: SchemaCommand) => {
+				const attributeName: string = lcfirst(command.name)
 
 				if (!(column as any)[attributeName]) {
 					return
 				}
 
-				this.addCommand(commandName, { value: (column as any)[attributeName], column })
+				this.addCommand(command.name, { value: (column as any)[attributeName], column })
 			})
 		})
 	}
@@ -133,7 +132,7 @@ export class Blueprint {
 	}
 
 	protected createCommand(name: string, parameters?: {}) {
-		return new ColumnBuilder({ name, ...parameters })
+		return new SchemaCommand({ name, ...parameters })
 	}
 
 	protected dropIndexCommand(command: string, type: string, index?: string | string[]) {
@@ -147,7 +146,7 @@ export class Blueprint {
 	}
 
 	getCommands() {
-		return this.commands.map(builder => builder.build())
+		return this.commands
 	}
 
 	temporary() {
