@@ -85,8 +85,8 @@ export class MigrationCreator {
 		this.postCreate.push(callback)
 	}
 
-	protected getDatePrefix(): Date {
-		return new Date()
+	protected getDatePrefix(): string {
+		return new Date().toISOString()
 	}
 
 	stubPath(): string {

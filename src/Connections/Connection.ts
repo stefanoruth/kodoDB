@@ -41,7 +41,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * The active PDO connection.
 	 */
-	protected pdo: () => void // PDO?
+	protected abstract pdo: () => any
 
 	/**
 	 * The active PDO connection used for reads.
@@ -132,7 +132,6 @@ export abstract class Connection implements ConnectionInterface {
 	 * Create a new database connection instance.
 	 */
 	constructor(pdo: () => void, database: string = '', tablePrefix: string = '', config = []) {
-		this.pdo = pdo
 		// First we will setup the default properties. We keep track of the DB
 		// name we are connected to since it is needed when some reflective
 		// type commands are run such as checking whether a table exists.

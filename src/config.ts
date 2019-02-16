@@ -85,24 +85,24 @@ function getDefaultConfig(): DatabaseConfig {
 		},
 
 		migrations: {
-			path: [__dirname + '/migrations'],
+			path: [],
 			table: 'migrations',
 		},
 	}
 }
 
-let config: DatabaseConfig
+let config: DatabaseConfig = getDefaultConfig()
 
 export class Config {
 	static get() {
-		if (!config) {
-			config = getDefaultConfig()
-		}
-
 		return config
 	}
 
 	static addConnection(name: string, newConfig: ConnectionConfig) {
 		config.connections[name] = newConfig
+	}
+
+	static override(userConfig: DatabaseConfig) {
+		config = userConfig
 	}
 }
