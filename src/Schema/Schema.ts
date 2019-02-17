@@ -4,7 +4,7 @@ import { Connection } from '../Connections/Connection'
 import { Collection } from '../Utils'
 import { DatabaseManager } from '../DatabaseManager'
 
-const connection: Collection = new DatabaseManager().connection()
+// let connection: Collection = new DatabaseManager().connection()
 
 export class Schema {
 	/**
