@@ -78,15 +78,15 @@ export class SchemaBuilder {
 		return true
 	}
 
-	/**
-	 * Get the data type for the given column name.
-	 */
-	getColumnType(table: string, column: string): string {
-		return this.connection
-			.getDoctrineColumn(this.connection.getTablePrefix() + table, column)
-			.getType()
-			.getName()
-	}
+	// /**
+	//  * Get the data type for the given column name.
+	//  */
+	// getColumnType(table: string, column: string): string {
+	// 	return this.connection
+	// 		.getDoctrineColumn(this.connection.getTablePrefix() + table, column)
+	// 		.getType()
+	// 		.getName()
+	// }
 
 	/**
 	 * Get the column listing for a given table.

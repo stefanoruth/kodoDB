@@ -130,12 +130,12 @@ export class Migrator {
 		const migration = this.resolve(name)
 
 		if (pretend) {
-			return this.pretendToRun(migration, 'up')
+			return this.pretendToRun(migration)
 		}
 
 		this.note('<comment>Migrating:</comment> {name}')
 
-		this.runMigration(migration, 'up')
+		this.runMigration(migration)
 
 		// Once we have run a migrations class, we will log that it was run in this
 		// repository so that we don't try to run it next time we do a migration
@@ -148,7 +148,7 @@ export class Migrator {
 	/**
 	 * Run a migration inside a transaction if the database supports it.
 	 */
-	protected runMigration(migration: Migration, method: string): void {
+	protected runMigration(migration: Migration): void {
 		const connection = this.resolveConnection(migration.getConnection())
 
 		const callback = () => {
@@ -163,18 +163,16 @@ export class Migrator {
 	/**
 	 * Pretend to run the migrations.
 	 */
-	protected pretendToRun(migration: Migration, method: string): void {
-		this.getQueries(migration, method).forEach((query: QueryLog) => {
-			// const name = get_class(migration)
-
-			this.note(`<info>${name}:</info> ${query.query}`)
+	protected pretendToRun(migration: Migration): void {
+		this.getQueries(migration).forEach((query: QueryLog) => {
+			this.note(`<info>${migration.constructor.name}:</info> ${query.query}`)
 		})
 	}
 
 	/**
 	 * Get all of the queries that would be run for a migration.
 	 */
-	protected getQueries(migration: Migration, method: string): QueryLog[] {
+	protected getQueries(migration: Migration): QueryLog[] {
 		// Now that we have the connections we can resolve it and pretend to run the
 		// queries against the database returning the array of raw SQL statements
 		// that would get fired against the database system for this migration.
@@ -189,13 +187,9 @@ export class Migrator {
 	 * Resolve a migration instance from a file.
 	 */
 	resolve(file: string): Migration {
-		// const class = require(file).default;
+		const className = require(file).default
 
-		return new class DemoMigration extends Migration {
-			run() {
-				//
-			}
-		}()
+		return new className()
 	}
 
 	/**

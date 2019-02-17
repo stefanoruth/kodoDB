@@ -52,7 +52,7 @@ export interface MigrationRepositoryInterface {
 	/**
 	 * Set the information source to gather data.
 	 */
-	setSource(name: string): void
+	setSource(name?: string): void
 }
 
 export class DatabaseMigrationRepository implements MigrationRepositoryInterface {
