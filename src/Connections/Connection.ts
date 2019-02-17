@@ -1,4 +1,4 @@
-// import { QueryBuilder } from '../Query/QueryBuilder'
+import { QueryBuilder } from '../Query/QueryBuilder'
 // import { ConnectionConfig } from '../config'
 import { SchemaBuilder } from '../Schema/SchemaBuilder'
 import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
@@ -273,7 +273,7 @@ export abstract class Connection implements ConnectionInterface {
 		do {
 			record = finalStatement.fetch()
 			if (record) {
-				yield record
+				// yield record
 			}
 		} while (record)
 	}

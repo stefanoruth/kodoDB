@@ -1,4 +1,4 @@
-import { QueryBuilder, QueryBuilderType } from '../../../dev/Query/QueryBuilder'
+import { QueryBuilder } from '../QueryBuilder'
 import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
 import { ucfirst } from '../../Utils'
@@ -134,6 +134,18 @@ export class QueryGrammar extends BaseGrammar {
 		return `${sql} from (${this.compileSelect(query)}) as ${this.wrapTable('temp_table')}`
 	}
 
+	/**
+	 * Compile a delete statement into SQL.
+	 */
+	compileDelete(query: QueryBuilder): string {
+		const wheres = query.wheres instanceof Array ? this.compileWheres(query) : ''
+
+		return `delete from ${this.wrapTable(query.fromTable)} ${wheres}`.trim()
+	}
+
+	/**
+	 * Wrap a value in keyword identifiers.
+	 */
 	wrap(value: string | Expression, prefixAlias: boolean = false): string {
 		if (value instanceof Expression) {
 			return this.getValue(value)
@@ -150,12 +162,18 @@ export class QueryGrammar extends BaseGrammar {
 		return this.wrapSegments(value.toString().split('.'))
 	}
 
-	protected isJsonSelector(value: string): boolean {
-		return value.indexOf('->') > -1
-	}
-
+	/**
+	 * Wrap the given JSON selector.
+	 */
 	protected wrapJsonSelector(value: string): string {
 		throw new Error('This database engine does not support JSON operations.')
+	}
+
+	/**
+	 * Determine if the given string is a JSON selector.
+	 */
+	protected isJsonSelector(value: string): boolean {
+		return value.indexOf('->') > -1
 	}
 
 	// Concatenate an array of segments, removing empties.
@@ -165,5 +183,12 @@ export class QueryGrammar extends BaseGrammar {
 				return value !== ''
 			})
 			.join(' ')
+	}
+
+	/**
+	 * Get the grammar specific operators.
+	 */
+	public getOperators(): string[] {
+		return this.operators
 	}
 }

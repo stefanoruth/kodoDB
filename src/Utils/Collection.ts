@@ -10,7 +10,7 @@ export class Collection<T = any> {
 	/**
 	 * Create a new collection.
 	 */
-	constructor(items: T[] = []) {
+	constructor(items: any = []) {
 		this.items = this.getArrayableItems(items)
 	}
 
@@ -78,6 +78,8 @@ export class Collection<T = any> {
 	getArrayableItems(items: any): T[] {
 		if (items instanceof Array) {
 			return items
+		} else if (items instanceof Object) {
+			return Object.keys(items).map(key => items[key])
 		}
 
 		return [items]
@@ -180,6 +182,29 @@ export class Collection<T = any> {
 		return this.filter((item: any) => {
 			return item !== callback
 		})
+	}
+
+	/**
+	 * Flatten a multi-dimensional array into a single level.
+	 */
+	flatten(array?: any[], depth: number = Infinity): Collection<T> {
+		const result: any[] = []
+
+		if (typeof array === 'undefined') {
+			array = this.items
+		}
+
+		array.forEach(item => {
+			if (!(item instanceof Array)) {
+				result.push(item)
+			} else if (depth === 1) {
+				result.concat(item.values())
+			} else {
+				result.concat(this.flatten(item, depth - 1))
+			}
+		})
+
+		return new Collection<T>(result)
 	}
 
 	/**

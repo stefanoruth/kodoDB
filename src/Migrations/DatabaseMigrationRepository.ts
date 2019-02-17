@@ -1,27 +1,27 @@
-import { ConnectionResolverInterface, ConnectionResolver } from '../Connections/ConnectionResolver'
+import { ConnectionResolver } from '../Connections/ConnectionResolver'
 import { QueryBuilder } from '../Query/QueryBuilder'
-import { Connection, ConnectionInterface } from '../Connections/Connection'
+import { Connection } from '../Connections/Connection'
 
 export interface MigrationRepositoryInterface {
 	/**
 	 * Get the completed migrations.
 	 */
-	getRan(): []
+	getRan(): any[]
 
 	/**
 	 * Get list of migrations.
 	 */
-	getMigrations(steps: number): []
+	getMigrations(steps: number): any[]
 
 	/**
 	 * Get the last migration batch.
 	 */
-	getLast(): []
+	getLast(): any[]
 
 	/**
 	 * Get the completed migrations with their batch numbers.
 	 */
-	getMigrationBatches(): []
+	getMigrationBatches(): any[]
 
 	/**
 	 * Log that a migration was run.
@@ -81,7 +81,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Get the completed migrations.
 	 */
-	getRan(): [] {
+	getRan(): any[] {
 		return this.table()
 			.orderBy('batch', 'asc')
 			.orderBy('migration', 'asc')
@@ -92,7 +92,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Get list of migrations.
 	 */
-	getMigrations(steps: number): [] {
+	getMigrations(steps: number): any[] {
 		return this.table()
 			.where('batch', '>=', '1')
 			.orderBy('batch', 'desc')
@@ -105,7 +105,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Get the last migration batch.
 	 */
-	getLast(): [] {
+	getLast(): any[] {
 		return this.table()
 			.where('batch', this.getLastBatchNumber())
 			.orderBy('migration', 'desc')
@@ -116,7 +116,7 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	/**
 	 * Get the completed migrations with their batch numbers.
 	 */
-	getMigrationBatches(): [] {
+	getMigrationBatches(): any[] {
 		return this.table()
 			.orderBy('batch', 'asc')
 			.orderBy('migration', 'asc')
@@ -184,9 +184,8 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	 * Get a query builder for the migration table.
 	 */
 	table(): QueryBuilder {
-		return this.getConnection()
-			.table(this.tableName)
-			.useWritePdo()
+		return this.getConnection().table(this.tableName)
+		// .useWritePdo()
 	}
 	/**
 	 * Get the connection resolver instance.
