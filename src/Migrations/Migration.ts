@@ -18,4 +18,9 @@ export abstract class Migration {
 		}
 		return ''
 	}
+
+	/**
+	 * Run the migrations.
+	 */
+	abstract run(): void
 }

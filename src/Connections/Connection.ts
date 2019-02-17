@@ -1,11 +1,11 @@
-import { QueryBuilder } from '../Query/QueryBuilder'
-import { ConnectionConfig } from '../config'
+// import { QueryBuilder } from '../Query/QueryBuilder'
+// import { ConnectionConfig } from '../config'
 import { SchemaBuilder } from '../Schema/SchemaBuilder'
 import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
 import { QueryGrammar } from '../Query/Grammars/QueryGrammar'
 import { QueryProcessor } from '../Query/Processors/QueryProcessor'
 import { QueryException } from '../Exceptions/QueryException'
-import { detectsLostConnections } from '../Utils'
+import { detectsLostConnections, tap, detectsDeadlocks } from '../Utils'
 import { Expression } from '../Query/Expression'
 import { BaseGrammar } from '../BaseGrammar'
 import {
@@ -34,8 +34,10 @@ export interface ConnectionInterface {
 	commit(): void
 	rollBack(): void
 	transactionLevel(): number
-	pretend(callback: () => void): []
+	pretend(callback: () => void): QueryLog[]
 }
+
+export type QueryLog = { query: string; bindings?: any[]; time?: number }
 
 export abstract class Connection implements ConnectionInterface {
 	/**
@@ -106,7 +108,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * All of the queries run against the connection.
 	 */
-	protected queryLog: any[] = []
+	protected queryLog: QueryLog[] = []
 
 	/**
 	 * Indicates whether queries are being logged.
@@ -356,11 +358,11 @@ export abstract class Connection implements ConnectionInterface {
 	 * Run a raw, unprepared query against the PDO connection.
 	 */
 	unprepared(query: string): boolean {
-		return this.run(query, [], (query: string) => {
+		return this.run(query, [], (runQuery: string) => {
 			if (this.isPretending()) {
 				return true
 			}
-			const change = this.getPdo().exec(query) !== false
+			const change = this.getPdo().exec(runQuery) !== false
 			this.recordsHaveBeenModified(change)
 			return change
 		})
@@ -369,7 +371,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Execute the given callback in "dry run" mode.
 	 */
-	pretend(callback: (connection: Connection) => any): [] {
+	pretend(callback: (connection: Connection) => any): QueryLog[] {
 		return this.withFreshQueryLog(() => {
 			this.pretending = true
 			// Basically to make the database connection "pretend", we will just return
@@ -483,7 +485,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Log a query in the connection's query log.
 	 */
-	logQuery(query: string, bindings: any[] = [], time?: number): void {
+	logQuery(query: string, bindings: any[] = [], time: number): void {
 		this.event(new QueryExecuted(query, bindings, time, this))
 		if (this.loggingQueries) {
 			this.queryLog.push({ query, bindings, time })
@@ -500,7 +502,12 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Handle a query exception.
 	 */
-	protected handleQueryException(e: QueryException, query: string, bindings: any[], callback: () => any) {
+	protected handleQueryException(
+		e: QueryException,
+		query: string,
+		bindings: any[],
+		callback: (query: string, bindings: any[]) => any
+	) {
 		if (this.transactions >= 1) {
 			throw e
 		}
@@ -510,7 +517,12 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Handle a query exception that occurred during query execution.
 	 */
-	protected tryAgainIfCausedByLostConnection(e: QueryException, query: string, bindings: any[], callback: () => any) {
+	protected tryAgainIfCausedByLostConnection(
+		e: QueryException,
+		query: string,
+		bindings: any[],
+		callback: (query: string, bindings: any[]) => any
+	) {
 		if (detectsLostConnections(e)) {
 			this.reconnect()
 			return this.runQueryCallback(query, bindings, callback)
@@ -541,7 +553,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Disconnect from the underlying PDO connection.
 	 */
 	disconnect(): void {
-		this.setPdo(null).setReadPdo(null)
+		// this.setPdo(null).setReadPdo(null)
 	}
 
 	/**
@@ -669,7 +681,7 @@ export abstract class Connection implements ConnectionInterface {
 	setPdo(pdo?: () => void): this {
 		// PDO?
 		this.transactions = 0
-		this.pdo = pdo
+		// this.pdo = pdo
 		return this
 	}
 
@@ -701,7 +713,8 @@ export abstract class Connection implements ConnectionInterface {
 	 * Get an option from the configuration options.
 	 */
 	getConfig(option?: string): string {
-		return Arr.get(this.config, option)
+		// return Arr.get(this.config, option)
+		return ''
 	}
 
 	/**
@@ -791,7 +804,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Get the connection query log.
 	 */
-	getQueryLog(): any[] {
+	getQueryLog(): QueryLog[] {
 		return this.queryLog
 	}
 
@@ -862,12 +875,6 @@ export abstract class Connection implements ConnectionInterface {
 		return grammar
 	}
 
-	abstract transaction(callback: () => void, attempts: number): any
-	abstract beginTransaction(): void
-	abstract commit(): void
-	abstract rollBack(): void
-	abstract transactionLevel(): number
-
 	/**
 	 * Register a connection resolver.
 	 */
@@ -880,5 +887,160 @@ export abstract class Connection implements ConnectionInterface {
 	 */
 	static getResolver(driver: string): any {
 		return this.resolvers[driver]
+	}
+
+	/**
+	 * Execute a Closure within a transaction.
+	 */
+	transaction(callback: (connection: Connection) => void, attempts: number = 1): any {
+		for (let currentAttempt = 1; currentAttempt <= attempts; currentAttempt++) {
+			this.beginTransaction()
+			// We'll simply execute the given callback within a try / catch block and if we
+			// catch any exception we can rollback this transaction so that none of this
+			// gets actually persisted to a database or stored in a permanent fashion.
+			try {
+				return tap(callback(this), () => {
+					this.commit()
+				})
+			} catch (err) {
+				// If we catch an exception we'll rollback this transaction and try again if we
+				// are not out of attempts. If we are out of attempts we will just throw the
+				// exception back out and let the developer handle an uncaught exceptions.
+				try {
+					this.handleTransactionException(err, currentAttempt, attempts)
+				} catch (subErr) {
+					this.rollBack()
+					throw subErr
+				}
+			}
+		}
+	}
+
+	/**
+	 * Handle an exception encountered when running a transacted statement.
+	 */
+	protected handleTransactionException(err: Error, currentAttempt: number, maxAttempts: number): void {
+		// On a deadlock, MySQL rolls back the entire transaction so we can't just
+		// retry the query. We have to throw this exception all the way out and
+		// let the developer handle it in another way. We will decrement too.
+		if (detectsDeadlocks(err) && this.transactions > 1) {
+			this.transactions--
+			throw err
+		}
+
+		// If there was an exception we will rollback this transaction and then we
+		// can check if we have exceeded the maximum attempt count for this and
+		// if we haven't we will return and try this query again in our loop.
+		this.rollBack()
+		if (detectsDeadlocks(err) && currentAttempt < maxAttempts) {
+			return
+		}
+		throw err
+	}
+
+	/**
+	 * Start a new database transaction.
+	 */
+	beginTransaction(): void {
+		this.createTransaction()
+		this.transactions++
+		this.fireConnectionEvent('beganTransaction')
+	}
+
+	/**
+	 * Create a transaction within the database.
+	 */
+	protected createTransaction(): void {
+		if (this.transactions === 0) {
+			try {
+				this.getPdo().beginTransaction()
+			} catch (e) {
+				this.handleBeginTransactionException(e)
+			}
+		} else if (this.transactions >= 1 && this.queryGrammar.supportsSavepoints()) {
+			this.createSavepoint()
+		}
+	}
+
+	/**
+	 * Create a save point within the database.
+	 */
+	protected createSavepoint(): void {
+		this.getPdo().exec(this.queryGrammar.compileSavepoint('trans' + (this.transactions + 1)))
+	}
+
+	/**
+	 * Handle an exception from a transaction beginning.
+	 */
+	protected handleBeginTransactionException(err: Error): void {
+		if (detectsLostConnections(err)) {
+			this.reconnect()
+			// this.pdo.beginTransaction()
+		} else {
+			throw err
+		}
+	}
+
+	/**
+	 * Commit the active database transaction.
+	 */
+	commit(): void {
+		if (this.transactions === 1) {
+			this.getPdo().commit()
+		}
+		this.transactions = Math.max(0, this.transactions - 1)
+		this.fireConnectionEvent('committed')
+	}
+
+	/**
+	 * Rollback the active database transaction.
+	 */
+	rollBack(toLevel?: number): void {
+		// We allow developers to rollback to a certain transaction level. We will verify
+		// that this given transaction level is valid before attempting to rollback to
+		// that level. If it's not we will just return out and not attempt anything.
+		toLevel = typeof toLevel === 'undefined' ? this.transactions - 1 : toLevel
+
+		if (toLevel < 0 || toLevel >= this.transactions) {
+			return
+		}
+		// Next, we will actually perform this rollback within this database and fire the
+		// rollback event. We will also set the current transaction level to the given
+		// level that was passed into this method so it will be right from here out.
+		try {
+			this.performRollBack(toLevel)
+		} catch (err) {
+			this.handleRollBackException(err)
+		}
+		this.transactions = toLevel
+		this.fireConnectionEvent('rollingBack')
+	}
+
+	/**
+	 * Perform a rollback within the database.
+	 */
+	protected performRollBack(toLevel: number): void {
+		if (toLevel === 0) {
+			this.getPdo().rollBack()
+		} else if (this.queryGrammar.supportsSavepoints()) {
+			this.getPdo().exec(this.queryGrammar.compileSavepointRollBack('trans' + (toLevel + 1)))
+		}
+	}
+
+	/**
+	 * Handle an exception from a rollback.
+	 */
+	protected handleRollBackException(err: Error) {
+		if (detectsDeadlocks(err)) {
+			this.transactions = 0
+		}
+		throw err
+	}
+
+	/**
+	 * Get the number of active transactions.
+	 */
+	transactionLevel(): number {
+		return this.transactions
 	}
 }

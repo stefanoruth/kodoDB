@@ -1,34 +1,9 @@
-import { QueryBuilder, QueryBuilderType } from '../QueryBuilder'
+import { QueryBuilder, QueryBuilderType } from '../../../dev/Query/QueryBuilder'
 import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
 import { ucfirst } from '../../Utils'
 
-interface MySig {
-	toString: () => string
-	[key: string]: any
-}
-
-class MyInd implements MySig {
-	toString() {
-		return 'hello'
-	}
-}
-
-const query3: MySig = new MyInd()
-const query2: MySig = {
-	toString() {
-		return 'hello'
-	},
-}
-
-interface QueryGrammarType {
-	compileAggregate: (query: QueryBuilder, aggregate: any) => string
-	[key: string]: any
-}
-
-export type QueryGrammarClass = typeof QueryGrammar
-
-export class QueryGrammar extends BaseGrammar implements QueryGrammarType {
+export class QueryGrammar extends BaseGrammar {
 	protected operators = []
 
 	protected selectComponents = [
@@ -176,8 +151,7 @@ export class QueryGrammar extends BaseGrammar implements QueryGrammarType {
 	}
 
 	protected isJsonSelector(value: string): boolean {
-		// return Str:: contains($value, '->');
-		return false
+		return value.indexOf('->') > -1
 	}
 
 	protected wrapJsonSelector(value: string): string {
