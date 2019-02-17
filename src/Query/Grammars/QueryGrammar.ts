@@ -1,7 +1,8 @@
 import { QueryBuilder } from '../QueryBuilder'
 import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
-import { ucfirst } from '../../Utils'
+import { ucfirst, Collection } from '../../Utils'
+import { Bindings } from '../Bindings'
 
 export class QueryGrammar extends BaseGrammar {
 	protected operators = []
@@ -135,12 +136,56 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile an insert statement into SQL.
+	 */
+	compileInsert(query: QueryBuilder, values: any[]): string {
+		// Essentially we will force every insert to be treated as a batch insert which
+		// simply makes creating the SQL easier for us since we can utilize the same
+		// basic routine regardless of an amount of records given to us to insert.
+		const table = this.wrapTable(query.fromTable)
+		if (values[0] && !(values instanceof Array)) {
+			values = [values]
+		}
+
+		const columns = this.columnize(values[0])
+		// We need to build a list of parameter place-holders of values that are bound
+		// to the query. Each insert should have the exact same amount of parameter
+		// bindings so we will loop through the record and parameterize them all.
+		const parameters = new Collection(values)
+			.map(record => {
+				return '(' + this.parameterize(record) + ')'
+			})
+			.join(', ')
+
+		return `insert into ${table} (${columns}) values ${parameters}`
+	}
+
+	/**
+	 * Prepare the bindings for an update statement.
+	 */
+	prepareBindingsForUpdate(bindings: Bindings, values: any[]): any[] {
+		const cleanBindings = new Collection(bindings)
+			.except(['join', 'select'])
+			.flatten()
+			.all()
+
+		return [...bindings.join, ...values, ...cleanBindings]
+	}
+
+	/**
 	 * Compile a delete statement into SQL.
 	 */
 	compileDelete(query: QueryBuilder): string {
 		const wheres = query.wheres instanceof Array ? this.compileWheres(query) : ''
 
 		return `delete from ${this.wrapTable(query.fromTable)} ${wheres}`.trim()
+	}
+
+	/**
+	 * Prepare the bindings for a delete statement.
+	 */
+	prepareBindingsForDelete(bindings: Bindings): any[] {
+		return new Collection(bindings).all()
 	}
 
 	/**

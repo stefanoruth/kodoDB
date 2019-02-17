@@ -22,6 +22,13 @@ export class Collection<T = any> {
 	}
 
 	/**
+	 * Determine if the collection is empty or not.
+	 */
+	isEmpty(): boolean {
+		return this.items.length === 0
+	}
+
+	/**
 	 * Run a map over each of the items.
 	 */
 	map(callback: ArrayFn): Collection<T> {
@@ -83,6 +90,19 @@ export class Collection<T = any> {
 		}
 
 		return [items]
+	}
+
+	/**
+	 * Get all items except for those with the specified keys.
+	 */
+	except(keys: string[]): Collection<T> {
+		const results: any[] = this.items
+
+		keys.forEach(key => {
+			results.splice(results.indexOf(key), 1)
+		})
+
+		return new Collection<T>(results)
 	}
 
 	/**
@@ -187,7 +207,7 @@ export class Collection<T = any> {
 	/**
 	 * Flatten a multi-dimensional array into a single level.
 	 */
-	flatten(array?: any[], depth: number = Infinity): Collection<T> {
+	flatten(depth: number = Infinity, array?: any[]): Collection<T> {
 		const result: any[] = []
 
 		if (typeof array === 'undefined') {
@@ -200,7 +220,7 @@ export class Collection<T = any> {
 			} else if (depth === 1) {
 				result.concat(item.values())
 			} else {
-				result.concat(this.flatten(item, depth - 1))
+				result.concat(this.flatten(depth - 1, item))
 			}
 		})
 

@@ -1,6 +1,7 @@
 import { ConnectionResolver } from '../Connections/ConnectionResolver'
 import { QueryBuilder } from '../Query/QueryBuilder'
 import { Connection } from '../Connections/Connection'
+import { Migration } from './Migration'
 
 export interface MigrationRepositoryInterface {
 	/**
@@ -128,18 +129,20 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	 * Log that a migration was run.
 	 */
 	log(file: string, batch: number): void {
-		this.table().insert({
-			migration: file,
-			batch,
-		})
+		this.table().insert([
+			{
+				migration: file,
+				batch,
+			},
+		])
 	}
 
 	/**
 	 * Remove a migration from the log.
 	 */
-	delete(migration: object): void {
+	delete(migration: Migration): void {
 		this.table()
-			.where('migration', migration.migration)
+			.where('migration', migration.fileName)
 			.delete()
 	}
 

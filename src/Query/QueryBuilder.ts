@@ -1,7 +1,7 @@
 import { Connection } from '../Connections/Connection'
 import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
-import { Collection } from '../Utils'
+import { Collection, tap } from '../Utils'
 import { Bindings, BindingKeys, BindingType } from './Bindings'
 import { Expression } from './Expression'
 
@@ -13,7 +13,7 @@ interface WhereClause {
 	bool: WhereBoolean
 }
 
-type WhereBoolean = 'and' | 'or'
+export type WhereBoolean = 'and' | 'or'
 
 export class QueryBuilder {
 	/**
@@ -49,7 +49,7 @@ export class QueryBuilder {
 	/**
 	 * An aggregate function and column to be run.
 	 */
-	aggregate?: any[]
+	aggregate?: { functionName: string; columns: string[] }
 
 	/**
 	 * The columns that should be returned.
@@ -65,6 +65,11 @@ export class QueryBuilder {
 	 * The where constraints for the query.
 	 */
 	wheres: WhereClause[] = []
+
+	/**
+	 * The groupings for the query.
+	 */
+	groups: any[] = []
 
 	/**
 	 * The orderings for the query.
@@ -376,6 +381,41 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Retrieve the maximum value of a given column.
+	 */
+	max(column: string): number {
+		return this.getAggregate('max', [column])
+	}
+
+	/**
+	 * Execute an aggregate function on the database.
+	 */
+	getAggregate(functionName: string, columns: string[] = ['*']): any {
+		const results = this.cloneWithout(this.unions ? [] : ['columns'])
+			.cloneWithoutBindings(this.unions ? [] : ['select'])
+			.setAggregate(functionName, columns)
+			.get(columns)
+
+		if (!results.isEmpty()) {
+			return results.first().aggregate
+		}
+	}
+
+	/**
+	 * Set the aggregate property without running the query.
+	 */
+	protected setAggregate(functionName: string, columns: string[]): QueryBuilder {
+		this.aggregate = { functionName, columns }
+
+		if (this.groups.length === 0) {
+			this.orders = []
+			this.bindings.order = []
+		}
+
+		return this
+	}
+
+	/**
 	 * Execute the given callback while selecting the given columns.
 	 *
 	 * After running the callback, the columns are reset to the original value.
@@ -389,6 +429,29 @@ export class QueryBuilder {
 		const result = callback()
 		this.columns = original
 		return result
+	}
+
+	/**
+	 * Insert a new record into the database.
+	 */
+	insert(values: any[]): boolean {
+		// Since every insert gets treated like a batch insert, we will make sure the
+		// bindings are structured in a way that is convenient when building these
+		// inserts statements by verifying these elements are actually an array.
+		if (values.length === 0) {
+			return true
+		}
+
+		if (values[0] && !(values instanceof Array)) {
+			values = [values]
+		}
+		// Finally, we will run this query against the database connection and return
+		// the results. We will need to also flatten these bindings before running
+		// the query so they are all in one huge, flattened array for execution.
+		return this.connection.insert(
+			this.grammar.compileInsert(this, values),
+			this.cleanBindings(new Collection(values).flatten(1).all())
+		)
 	}
 
 	/**
@@ -440,6 +503,34 @@ export class QueryBuilder {
 	protected cleanBindings(bindings: any[]): any[] {
 		return bindings.filter(binding => {
 			return !(binding instanceof Expression)
+		})
+	}
+
+	/**
+	 * Clone the query without the given properties.
+	 *
+	 * @param  array  $properties
+	 * @return static
+	 */
+	cloneWithout(properties: string[]): QueryBuilder {
+		return tap({ ...this }, (clone: any) => {
+			properties.forEach(property => {
+				clone[property] = null
+			})
+		})
+	}
+
+	/**
+	 * Clone the query without the given bindings.
+	 *
+	 * @param  array  $except
+	 * @return static
+	 */
+	cloneWithoutBindings(except: string[]): QueryBuilder {
+		return tap({ ...this }, (clone: any) => {
+			except.forEach(type => {
+				clone.bindings[type] = []
+			})
 		})
 	}
 }

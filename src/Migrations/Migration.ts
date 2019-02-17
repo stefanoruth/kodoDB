@@ -10,6 +10,11 @@ export abstract class Migration {
 	withinTransaction: boolean = true
 
 	/**
+	 * Filename when loaded
+	 */
+	fileName?: string
+
+	/**
 	 * Get the migration connection name.
 	 */
 	getConnection(): string {
