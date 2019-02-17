@@ -1,7 +1,13 @@
-import { Migration } from 'kodoDB'
+import { Migration, Schema, Blueprint } from 'kodoDB'
 
 export class DummyClass extends Migration {
+    /**
+     * Run the migrations.
+     */
     run() {
-        // Todo Create Table
+        Schema.create('DummyTable', (table: Blueprint) {
+            table.increments('id')
+            table.timestamps();
+        });
     }
 }

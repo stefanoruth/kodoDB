@@ -262,12 +262,12 @@ export class Migrator {
 	/**
 	 * Set the default connection name.
 	 */
-	setConnection(name: string): void {
-		// if (!is_null(name)) {
-		//     this.resolver.setDefaultConnection(name);
-		// }
-		// this.repository.setSource(name);
-		// this.connection = name;
+	setConnection(name?: string): void {
+		if (name) {
+			this.resolver.setDefaultConnection(name)
+		}
+		this.repository.setSource(name)
+		this.connection = name
 	}
 
 	/**

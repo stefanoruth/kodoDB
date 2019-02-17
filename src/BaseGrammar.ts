@@ -42,7 +42,7 @@ export class BaseGrammar {
 
 	wrapSegments(segments: any[]): string {
 		return new Collection(segments)
-			.map((segment, key) => {
+			.map((segment: any, key: number) => {
 				return key === 0 && segments.length > 1 ? this.wrapTable(segment) : this.wrapValue(segment)
 			})
 			.join('.')

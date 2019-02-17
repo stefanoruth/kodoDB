@@ -6,6 +6,7 @@ export class MySqlBuilder extends SchemaBuilder {
 	 */
 	hasTable(table: string): boolean {
 		table = this.connection.getTablePrefix() + table
+
 		return (
 			this.connection.select(this.grammar.compileTableExists(), [this.connection.getDatabaseName(), table]).length > 0
 		)
@@ -21,6 +22,7 @@ export class MySqlBuilder extends SchemaBuilder {
 			this.connection.getDatabaseName(),
 			table,
 		])
+
 		return this.connection.getPostProcessor().processColumnListing(results)
 	}
 
@@ -42,12 +44,11 @@ export class MySqlBuilder extends SchemaBuilder {
 		this.connection.statement(this.grammar.compileDropAllTables(tables))
 		this.enableForeignKeyConstraints()
 	}
+
 	/**
 	 * Drop all views from the database.
-	 *
-	 * @return void
 	 */
-	dropAllViews() {
+	dropAllViews(): void {
 		const views: string[] = []
 		this.getAllViews().forEach(row => {
 			// row = (array) row;

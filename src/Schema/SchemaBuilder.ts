@@ -104,7 +104,7 @@ export class SchemaBuilder {
 	/**
 	 * Modify a table on the schema.
 	 */
-	table(table: string, callback: () => void): void {
+	table(table: string, callback: (blueprint: Blueprint) => void): void {
 		this.build(this.createBlueprint(table, callback))
 	}
 

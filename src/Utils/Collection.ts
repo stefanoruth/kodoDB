@@ -38,8 +38,8 @@ export class Collection<T = any> {
 	/**
 	 * Join with the given lists, returning all possible permutations.
 	 */
-	join(separator?: string | undefined): Collection<T> {
-		return new Collection<T>(this.items.join(separator))
+	join(separator?: string | undefined): string {
+		return this.items.join(separator)
 	}
 
 	/**
