@@ -21,7 +21,7 @@ export class ConnectionFactory {
 	createConnection(config: ConnectionConfig) {
 		switch (config.driver) {
 			case 'mysql':
-				return new MySqlConnection(config)
+				return new MySqlConnection(() => null, config.database, config.prefix, config)
 		}
 
 		throw new Error(`Unsupported driver [${config.driver}]`)

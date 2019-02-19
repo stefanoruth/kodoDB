@@ -1,5 +1,4 @@
 import { QueryBuilder } from '../Query/QueryBuilder'
-// import { ConnectionConfig } from '../config'
 import { SchemaBuilder } from '../Schema/SchemaBuilder'
 import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
 import { QueryGrammar } from '../Query/Grammars/QueryGrammar'
@@ -15,6 +14,7 @@ import {
 	QueryExecuted,
 	StatementPrepared,
 } from '../Events'
+import { DatabaseConfig, ConnectionConfig } from '../config'
 
 export interface ConnectionInterface {
 	table(table: string): QueryBuilder
@@ -63,7 +63,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * The database connection configuration options.
 	 */
-	protected config = []
+	protected config: ConnectionConfig
 
 	/**
 	 * The reconnector instance for the connection.
@@ -133,7 +133,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Create a new database connection instance.
 	 */
-	constructor(pdo: () => void, database: string = '', tablePrefix: string = '', config = []) {
+	constructor(pdo: () => void, database: string = '', tablePrefix: string = '', config: ConnectionConfig) {
 		// First we will setup the default properties. We keep track of the DB
 		// name we are connected to since it is needed when some reflective
 		// type commands are run such as checking whether a table exists.
@@ -251,7 +251,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Run a select statement against the database and returns a generator.
 	 */
-	cursor(query: string, bindings: any[] = [], useReadPdo = true): Generator {
+	*cursor(query: string, bindings: any[] = [], useReadPdo = true): Generator {
 		const finalStatement = this.run(query, bindings, () => {
 			if (this.isPretending()) {
 				return []
@@ -273,7 +273,7 @@ export abstract class Connection implements ConnectionInterface {
 		do {
 			record = finalStatement.fetch()
 			if (record) {
-				// yield record
+				yield record
 			}
 		} while (record)
 	}
@@ -697,7 +697,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Set the reconnect instance on the connection.
 	 */
-	setReconnector(reconnector: () => void): this {
+	setReconnector(reconnector: (connection: Connection) => void): this {
 		this.reconnector = reconnector
 		return this
 	}

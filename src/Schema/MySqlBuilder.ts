@@ -1,6 +1,15 @@
 import { SchemaBuilder } from './SchemaBuilder'
+import { MySqlConnection } from '../Connections/MySqlConnection'
+import { Connection } from '../Connections/Connection'
 
 export class MySqlBuilder extends SchemaBuilder {
+	/**
+	 * Create a new database Schema manager.
+	 */
+	constructor(connection: MySqlConnection) {
+		super(connection as Connection)
+	}
+
 	/**
 	 * Determine if the given table exists.
 	 */

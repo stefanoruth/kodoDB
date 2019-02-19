@@ -1,10 +1,9 @@
 import { Blueprint } from './Blueprint'
 import { SchemaBuilder } from './SchemaBuilder'
 import { Connection } from '../Connections/Connection'
-import { Collection } from '../Utils'
 import { DatabaseManager } from '../DatabaseManager'
 
-// let connection: Collection = new DatabaseManager().connection()
+const connection: Connection = new DatabaseManager().connection()
 
 export class Schema {
 	/**

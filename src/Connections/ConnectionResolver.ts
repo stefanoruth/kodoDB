@@ -1,4 +1,4 @@
-import { ConnectionInterface, Connection } from './Connection'
+import { Connection } from './Connection'
 
 export interface ConnectionResolverInterface {
 	/**
@@ -21,7 +21,7 @@ export class ConnectionResolver implements ConnectionResolverInterface {
 	/**
 	 * All of the registered connections.
 	 */
-    protected connections: { [key: string]: Connection } = {}
+	protected connections: { [key: string]: Connection } = {}
 
 	/**
 	 * The default connection name.
@@ -33,7 +33,7 @@ export class ConnectionResolver implements ConnectionResolverInterface {
 	 */
 	constructor(connections: Connection[] = []) {
 		connections.forEach(connection => {
-			this.addConnection(1, connection)
+			this.addConnection(connection.getName(), connection)
 		})
 	}
 
@@ -50,7 +50,7 @@ export class ConnectionResolver implements ConnectionResolverInterface {
 	/**
 	 * Add a connection to the resolver.
 	 */
-    addConnection(name: string, connection: Connection): void {
+	addConnection(name: string, connection: Connection): void {
 		this.connections[name] = connection
 	}
 

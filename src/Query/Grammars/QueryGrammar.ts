@@ -189,6 +189,27 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Determine if the grammar supports savepoints.
+	 */
+	supportsSavepoints(): boolean {
+		return true
+	}
+
+	/**
+	 * Compile the SQL statement to define a savepoint.
+	 */
+	compileSavepoint(name: string): string {
+		return 'SAVEPOINT ' + name
+	}
+
+	/**
+	 * Compile the SQL statement to execute a savepoint rollback.
+	 */
+	compileSavepointRollBack(name: string): string {
+		return 'ROLLBACK TO SAVEPOINT ' + name
+	}
+
+	/**
 	 * Wrap a value in keyword identifiers.
 	 */
 	wrap(value: string | Expression, prefixAlias: boolean = false): string {

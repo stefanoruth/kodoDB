@@ -145,6 +145,15 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Set the table which the query is targeting.
+	 */
+	from(table: string): QueryBuilder {
+		this.fromTable = table
+
+		return this
+	}
+
+	/**
 	 * Add a basic where clause to the query.
 	 */
 	where(column: string | string[], operator: string | any, value?: any, bool: WhereBoolean = 'and'): QueryBuilder {
