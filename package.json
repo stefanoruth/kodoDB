@@ -14,10 +14,11 @@
 	},
 	"scripts": {
 		"clean": "if exist dist rmdir dist /q /s",
-		"build": "tsc",
-		"watch": "tsc --watch",
+		"build": "yarn stubs && tsc",
+		"watch": "yarn stubs && tsc --watch",
 		"test": "jest",
-		"lint": "tslint -c ./tslint.json ./src/*"
+		"lint": "tslint -c ./tslint.json ./src/*",
+		"stubs": "cp -r ./src/Migrations/stubs/ ./dist/Migrations/"
 	},
 	"devDependencies": {
 		"@types/jest": "^23.3.13",

@@ -84,7 +84,7 @@ export const config: DatabaseConfig = {
 	},
 
 	migrations: {
-		path: [],
+		path: ['example/migrations'],
 		table: 'migrations',
 	},
 }

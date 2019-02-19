@@ -3,7 +3,7 @@ import { MigrationCreator } from '../Migrations/MigrationCreator'
 import * as fs from 'fs'
 import _ from 'lodash'
 import { TableGuesser } from '../Migrations/TableGuesser'
-import { Config } from '../config'
+import { config } from '../config'
 
 interface Args {
 	name: string
@@ -19,7 +19,6 @@ export class MigrateMakeCommand implements CommandModule<{}, Args> {
 	protected creator: MigrationCreator
 
 	constructor(creator: MigrationCreator = new MigrationCreator(fs)) {
-		super()
 		this.creator = creator
 	}
 
@@ -50,6 +49,7 @@ export class MigrateMakeCommand implements CommandModule<{}, Args> {
 	 * Execute the console command.
 	 */
 	async handler(args: Arguments<Args>) {
+		this.creator = new MigrationCreator(fs)
 		// It's possible for the developer to specify the tables to modify in this
 		// schema operation. The developer may also specify if this table needs
 		// to be freshly created so we can create the appropriate migrations.
@@ -77,7 +77,7 @@ export class MigrateMakeCommand implements CommandModule<{}, Args> {
 		// Now we are ready to write the migration out to disk. Once we've written
 		// the migration out, we will dump-autoload for the entire framework to
 		// make sure that the migrations are registered by the class loaders.
-		const path = Config.get().migrations.path[0]
+		const path = config.migrations.path[0]
 
 		const file = this.creator.create(name, path, table, Boolean(create))
 		console.log(`<info>Created Migration:</info> ${file}`)

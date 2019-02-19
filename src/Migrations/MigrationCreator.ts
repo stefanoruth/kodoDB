@@ -1,4 +1,4 @@
-import { studly } from '../Utils'
+import { studly, dateFormat } from '../Utils'
 import * as fs from 'fs'
 
 type tableEvent = (table: string) => any
@@ -13,6 +13,7 @@ export class MigrationCreator {
 	}
 
 	create(name: string, path: string, table: string, create: boolean = false): string {
+		console.log(name, path, table, create)
 		this.ensureMigrationDoesntAlreadyExist(name)
 
 		// First we will get the stub file for the migration, which serves as a type
@@ -20,10 +21,12 @@ export class MigrationCreator {
 		// various place-holders, save the file, and run the post create event.
 		const stub = this.getStub(table, create)
 
+		console.log(stub)
+
 		path = this.getPath(name, path)
 		const content = this.populateStub(name, stub, table)
 
-		this.files.writeFileSync(path, content)
+		this.files.writeFileSync(path, content, {})
 
 		// Next, we will fire any hooks that are supposed to fire after a migration is
 		// created. Once that is done we'll be ready to return the full path to the
@@ -43,7 +46,7 @@ export class MigrationCreator {
 	}
 
 	protected getStub(table?: string, create?: boolean): string {
-		if (table) {
+		if (!table) {
 			return this.files.readFileSync(this.stubPath() + '/blank.stub').toString()
 		}
 		// We also have stubs for creating new tables and modifying existing tables
@@ -86,7 +89,7 @@ export class MigrationCreator {
 	}
 
 	protected getDatePrefix(): string {
-		return new Date().toISOString()
+		return dateFormat(new Date())
 	}
 
 	stubPath(): string {
