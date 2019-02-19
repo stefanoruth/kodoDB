@@ -1,4 +1,4 @@
-import { Migration, Schema, Blueprint } from 'kodoDB'
+import { Migration, Schema, Blueprint } from 'kodo-db'
 
 export default class DummyClass extends Migration {
     /**
