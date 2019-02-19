@@ -187,6 +187,7 @@ export class Migrator {
 	 * Resolve a migration instance from a file.
 	 */
 	resolve(file: string): Migration {
+        // Todo Object.keys fetch first key to import class without default
 		const className = require(file).default
 
 		return new className()
