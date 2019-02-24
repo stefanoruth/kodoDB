@@ -1,5 +1,5 @@
-export * from './ConnectionLost'
-export * from './DeadLock'
+export * from './DetectsDeadlocks'
+export * from './DetectsLostConnections'
 export * from './Collection'
 export * from './Tap'
 export * from './String'

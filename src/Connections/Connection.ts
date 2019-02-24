@@ -4,7 +4,7 @@ import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
 import { QueryGrammar } from '../Query/Grammars/QueryGrammar'
 import { QueryProcessor } from '../Query/Processors/QueryProcessor'
 import { QueryException } from '../Exceptions/QueryException'
-import { detectsLostConnections, tap, detectsDeadlocks } from '../Utils'
+import { DetectsLostConnections, tap, DetectsDeadlocks } from '../Utils'
 import { Expression } from '../Query/Expression'
 import { BaseGrammar } from '../BaseGrammar'
 import {
@@ -14,30 +14,8 @@ import {
 	QueryExecuted,
 	StatementPrepared,
 } from '../Events'
-import { DatabaseConfig, ConnectionConfig } from '../config'
-
-export interface ConnectionInterface {
-	table(table: string): QueryBuilder
-	raw(value: any): Expression
-	selectOne(query: string, bindings: any[], useReadPdo: boolean): any
-	select(query: string, bindings: any[], useReadPdo: boolean): []
-	cursor(query: string, bindings: any[], useReadPdo: boolean): Generator
-	insert(query: string, bindings: any[]): boolean
-	update(query: string, bindings: any[]): number
-	delete(query: string, bindings: any[]): number
-	statement(query: string, bindings: any[]): boolean
-	affectingStatement(query: string, bindings: any[]): number
-	unprepared(query: string): boolean
-	prepareBindings(bindings: any[]): any[]
-	transaction(callback: () => void, attempts: number): any
-	beginTransaction(): void
-	commit(): void
-	rollBack(): void
-	transactionLevel(): number
-	pretend(callback: () => void): QueryLog[]
-}
-
-export type QueryLog = { query: string; bindings?: any[]; time?: number }
+import { ConnectionConfig } from '../config'
+import { ConnectionInterface, QueryLog } from './ConnectionInterface'
 
 export abstract class Connection implements ConnectionInterface {
 	/**
@@ -523,7 +501,7 @@ export abstract class Connection implements ConnectionInterface {
 		bindings: any[],
 		callback: (query: string, bindings: any[]) => any
 	) {
-		if (detectsLostConnections(e)) {
+		if (DetectsLostConnections.causedByLostConnection(e)) {
 			this.reconnect()
 			return this.runQueryCallback(query, bindings, callback)
 		}
@@ -923,7 +901,7 @@ export abstract class Connection implements ConnectionInterface {
 		// On a deadlock, MySQL rolls back the entire transaction so we can't just
 		// retry the query. We have to throw this exception all the way out and
 		// let the developer handle it in another way. We will decrement too.
-		if (detectsDeadlocks(err) && this.transactions > 1) {
+		if (DetectsDeadlocks.causedByDeadlock(err) && this.transactions > 1) {
 			this.transactions--
 			throw err
 		}
@@ -932,7 +910,7 @@ export abstract class Connection implements ConnectionInterface {
 		// can check if we have exceeded the maximum attempt count for this and
 		// if we haven't we will return and try this query again in our loop.
 		this.rollBack()
-		if (detectsDeadlocks(err) && currentAttempt < maxAttempts) {
+		if (DetectsDeadlocks.causedByDeadlock(err) && currentAttempt < maxAttempts) {
 			return
 		}
 		throw err
@@ -973,7 +951,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Handle an exception from a transaction beginning.
 	 */
 	protected handleBeginTransactionException(err: Error): void {
-		if (detectsLostConnections(err)) {
+		if (DetectsLostConnections.causedByLostConnection(err)) {
 			this.reconnect()
 			// this.pdo.beginTransaction()
 		} else {
@@ -1031,7 +1009,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Handle an exception from a rollback.
 	 */
 	protected handleRollBackException(err: Error) {
-		if (detectsDeadlocks(err)) {
+		if (DetectsDeadlocks.causedByDeadlock(err)) {
 			this.transactions = 0
 		}
 		throw err
