@@ -122,11 +122,6 @@ export class QueryBuilder {
 	]
 
 	/**
-	 * Whether use write pdo for select.
-	 */
-	useWritePdo: boolean = false
-
-	/**
 	 * Create a new query builder instance.
 	 */
 	constructor(connection: Connection, grammar?: QueryGrammar, processor?: QueryProcessor) {
@@ -309,7 +304,7 @@ export class QueryBuilder {
 	 * Run the query as a "select" statement against the connection.
 	 */
 	protected runSelect(): any[] {
-		return this.connection.select(this.toSql(), this.getBindings(), !this.useWritePdo)
+		return this.connection.select(this.toSql(), this.getBindings())
 	}
 
 	/**

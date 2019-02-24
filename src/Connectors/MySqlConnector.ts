@@ -23,6 +23,17 @@ export class MySqlConnector implements Connector {
 			}
 		})
 
+		const runQuery = async (sql: string, values: any[]): Promise<any> => {
+			return new Promise((resolve, reject) => {
+				connection.query(sql, values, (err, data) => {
+					if (err !== null) {
+						return reject(err)
+					}
+					return resolve(data)
+				})
+			})
+		}
+
 		return connection
 	}
 }

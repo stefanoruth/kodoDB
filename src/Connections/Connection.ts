@@ -16,17 +16,13 @@ import {
 } from '../Events'
 import { ConnectionConfig } from '../config'
 import { ConnectionInterface, QueryLog } from './ConnectionInterface'
+import { DatabaseDriver } from '../Drivers/DatabaseDriver'
 
 export abstract class Connection implements ConnectionInterface {
 	/**
-	 * The active PDO connection.
+	 * The active DB connection.
 	 */
-	protected abstract pdo: () => any
-
-	/**
-	 * The active PDO connection used for reads.
-	 */
-	protected readPdo?: () => void // PDO?
+	protected driver: DatabaseDriver
 
 	/**
 	 * The name of the connected database.
@@ -111,7 +107,9 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Create a new database connection instance.
 	 */
-	constructor(pdo: () => void, database: string = '', tablePrefix: string = '', config: ConnectionConfig) {
+	constructor(driver: DatabaseDriver, database: string = '', tablePrefix: string = '', config: ConnectionConfig) {
+		this.driver = driver
+
 		// First we will setup the default properties. We keep track of the DB
 		// name we are connected to since it is needed when some reflective
 		// type commands are run such as checking whether a table exists.
@@ -196,8 +194,8 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Run a select statement and return a single result.
 	 */
-	selectOne(query: string, bindings: any[] = [], useReadPdo: boolean = true): any {
-		const records = this.select(query, bindings, useReadPdo)
+	selectOne(query: string, bindings: any[] = []): any {
+		const records = this.select(query, bindings)
 		return records.shift()
 	}
 
@@ -205,13 +203,13 @@ export abstract class Connection implements ConnectionInterface {
 	 * Run a select statement against the database.
 	 */
 	selectFromWriteConnection(query: string, bindings: any[] = []): [] {
-		return this.select(query, bindings, false)
+		return this.select(query, bindings)
 	}
 
 	/**
 	 * Run a select statement against the database.
 	 */
-	select(query: string, bindings: any[] = [], useReadPdo: boolean = true): [] {
+	select(query: string, bindings: any[] = []): [] {
 		return this.run(query, bindings, () => {
 			if (this.isPretending()) {
 				return []
@@ -219,7 +217,7 @@ export abstract class Connection implements ConnectionInterface {
 			// For select statements, we'll simply execute the query and return an array
 			// of the database result set. Each element in the array will be a single
 			// row from the database table, and will either be an array or objects.
-			const statement = this.prepared(this.getPdoForSelect(useReadPdo).prepare(query))
+			const statement = this.prepared(this.getDriverForSelect().prepare(query))
 			this.bindValues(statement, this.prepareBindings(bindings))
 			statement.execute()
 			return statement.fetchAll()
@@ -229,7 +227,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Run a select statement against the database and returns a generator.
 	 */
-	*cursor(query: string, bindings: any[] = [], useReadPdo = true): Generator {
+	*cursor(query: string, bindings: any[] = []): Generator {
 		const finalStatement = this.run(query, bindings, () => {
 			if (this.isPretending()) {
 				return []
@@ -237,7 +235,7 @@ export abstract class Connection implements ConnectionInterface {
 			// First we will create a statement for the query. Then, we will set the fetch
 			// mode and prepare the bindings for the query. Once that's done we will be
 			// ready to execute the query against the database and return the cursor.
-			const statement = this.prepared(this.getPdoForSelect(useReadPdo).prepare(query))
+			const statement = this.prepared(this.getDriverForSelect().prepare(query))
 
 			this.bindValues(statement, this.prepareBindings(bindings))
 			// Next, we'll execute the query against the database and return the statement
@@ -272,8 +270,8 @@ export abstract class Connection implements ConnectionInterface {
 	 * @param  bool  useReadPdo
 	 * @return \PDO
 	 */
-	protected getPdoForSelect(useReadPdo = true) {
-		return useReadPdo ? this.getReadPdo() : this.getPdo()
+	protected getDriverForSelect(useReadPdo = true) {
+		return this.getDriver()
 	}
 
 	/**
@@ -305,7 +303,7 @@ export abstract class Connection implements ConnectionInterface {
 			if (this.isPretending()) {
 				return true
 			}
-			const statement = this.getPdo().prepare(query)
+			const statement = this.getDriver().prepare(query)
 			this.bindValues(statement, this.prepareBindings(bindings))
 			this.recordsHaveBeenModified()
 			return statement.execute()
@@ -323,7 +321,7 @@ export abstract class Connection implements ConnectionInterface {
 			// For update or delete statements, we want to get the number of rows affected
 			// by the statement and return that back to the developer. We'll first need
 			// to execute the statement and then we'll use PDO to fetch the affected.
-			const statement = this.getPdo().prepare(query)
+			const statement = this.getDriver().prepare(query)
 			this.bindValues(statement, this.prepareBindings(bindings))
 			statement.execute()
 			const count = statement.rowCount()
@@ -340,7 +338,7 @@ export abstract class Connection implements ConnectionInterface {
 			if (this.isPretending()) {
 				return true
 			}
-			const change = this.getPdo().exec(runQuery) !== false
+			const change = this.getDriver().exec(runQuery) !== false
 			this.recordsHaveBeenModified(change)
 			return change
 		})
@@ -523,7 +521,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Reconnect to the database if a PDO connection is missing.
 	 */
 	protected reconnectIfMissingConnection(): void {
-		if (!this.pdo) {
+		if (!this.driver) {
 			this.reconnect()
 		}
 	}
@@ -619,7 +617,7 @@ export abstract class Connection implements ConnectionInterface {
 		//     const driver = this.getDoctrineDriver();
 
 		//     this.doctrineConnection = new DoctrineConnection({
-		//         pdo: this.getPdo(),
+		//         pdo: this.getDriver(),
 		//         dbname: this.getConfig('database'),
 		//         driver: driver.getName(),
 		//     }, driver);
@@ -628,47 +626,20 @@ export abstract class Connection implements ConnectionInterface {
 	}
 
 	/**
-	 * Get the current PDO connection.
+	 * Get the current DB connection.
 	 */
-	getPdo() {
-		if (typeof this.pdo === 'function') {
-			return (this.pdo = this.pdo())
-		}
-		return this.pdo
+	getDriver() {
+		return this.driver
 	}
 
 	/**
-	 * Get the current PDO connection used for reading.
+	 * Set the DB connection.
 	 */
-	getReadPdo() {
-		if (this.transactions > 0) {
-			return this.getPdo()
-		}
-		if (this.recordsModified && this.getConfig('sticky')) {
-			return this.getPdo()
-		}
-		if (typeof this.readPdo === 'function') {
-			// return this.readPdo = this.readPdo()
-		}
-		return this.readPdo ? this.readPdo : this.getPdo()
-	}
-
-	/**
-	 * Set the PDO connection.
-	 */
-	setPdo(pdo?: () => void): this {
-		// PDO?
+	setDriver(driver: DatabaseDriver): this {
 		this.transactions = 0
-		// this.pdo = pdo
-		return this
-	}
 
-	/**
-	 * Set the PDO connection used for reading.
-	 */
-	setReadPdo(pdo?: () => void): this {
-		// PDO?
-		this.readPdo = pdo
+		this.driver = driver
+
 		return this
 	}
 
@@ -696,7 +667,7 @@ export abstract class Connection implements ConnectionInterface {
 	}
 
 	/**
-	 * Get the PDO driver name.
+	 * Get the DB driver name.
 	 */
 	getDriverName(): string {
 		return this.getConfig('driver')
@@ -887,7 +858,7 @@ export abstract class Connection implements ConnectionInterface {
 				try {
 					this.handleTransactionException(err, currentAttempt, attempts)
 				} catch (subErr) {
-					this.rollBack()
+					this.rollback()
 					throw subErr
 				}
 			}
@@ -909,7 +880,7 @@ export abstract class Connection implements ConnectionInterface {
 		// If there was an exception we will rollback this transaction and then we
 		// can check if we have exceeded the maximum attempt count for this and
 		// if we haven't we will return and try this query again in our loop.
-		this.rollBack()
+		this.rollback()
 		if (DetectsDeadlocks.causedByDeadlock(err) && currentAttempt < maxAttempts) {
 			return
 		}
@@ -931,7 +902,7 @@ export abstract class Connection implements ConnectionInterface {
 	protected createTransaction(): void {
 		if (this.transactions === 0) {
 			try {
-				this.getPdo().beginTransaction()
+				this.getDriver().beginTransaction()
 			} catch (e) {
 				this.handleBeginTransactionException(e)
 			}
@@ -944,7 +915,7 @@ export abstract class Connection implements ConnectionInterface {
 	 * Create a save point within the database.
 	 */
 	protected createSavepoint(): void {
-		this.getPdo().exec(this.queryGrammar.compileSavepoint('trans' + (this.transactions + 1)))
+		this.getDriver().exec(this.queryGrammar.compileSavepoint('trans' + (this.transactions + 1)))
 	}
 
 	/**
@@ -964,7 +935,7 @@ export abstract class Connection implements ConnectionInterface {
 	 */
 	commit(): void {
 		if (this.transactions === 1) {
-			this.getPdo().commit()
+			this.getDriver().commit()
 		}
 		this.transactions = Math.max(0, this.transactions - 1)
 		this.fireConnectionEvent('committed')
@@ -973,7 +944,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Rollback the active database transaction.
 	 */
-	rollBack(toLevel?: number): void {
+	rollback(toLevel?: number): void {
 		// We allow developers to rollback to a certain transaction level. We will verify
 		// that this given transaction level is valid before attempting to rollback to
 		// that level. If it's not we will just return out and not attempt anything.
@@ -999,9 +970,9 @@ export abstract class Connection implements ConnectionInterface {
 	 */
 	protected performRollBack(toLevel: number): void {
 		if (toLevel === 0) {
-			this.getPdo().rollBack()
+			this.getDriver().rollback()
 		} else if (this.queryGrammar.supportsSavepoints()) {
-			this.getPdo().exec(this.queryGrammar.compileSavepointRollBack('trans' + (toLevel + 1)))
+			this.getDriver().exec(this.queryGrammar.compileSavepointRollBack('trans' + (toLevel + 1)))
 		}
 	}
 

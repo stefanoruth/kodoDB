@@ -137,7 +137,6 @@ export class DatabaseMigrationRepository implements MigrationRepositoryInterface
 	 */
 	table(): QueryBuilder {
 		return this.getConnection().table(this.tableName)
-		// .useWritePdo()
 	}
 	/**
 	 * Get the connection resolver instance.

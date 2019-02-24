@@ -7,9 +7,9 @@ export class StatementPrepared {
 	connection: Connection
 
 	/**
-	 * The PDO statement.
+	 * The Query statement.
 	 */
-	statement: string // PDOStatement
+	statement: string
 
 	/**
 	 * Create a new event instance.
