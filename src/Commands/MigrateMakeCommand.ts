@@ -1,4 +1,4 @@
-import { CommandModule, Argv, Arguments } from 'yargs'
+import { CommandModule, Argv, Arguments, PositionalOptionsType } from 'yargs'
 import { MigrationCreator } from '../Migrations/MigrationCreator'
 import * as fs from 'fs'
 import _ from 'lodash'
@@ -6,54 +6,57 @@ import { TableGuesser } from '../Migrations/TableGuesser'
 import { config } from '../config'
 
 interface Args {
-	name: string
-	create?: string
+	create?: string | boolean
 	table?: string
 	path?: string
+	name?: string
 }
 
 export class MigrateMakeCommand implements CommandModule<{}, Args> {
-	command = 'make:migration'
+	command = 'make:migration <name>'
 	describe = 'Make migration'
 
-	protected creator: MigrationCreator
+	// builder = {
+	// 	create: {
+	// 		desc: 'Der',
+	// 		type: 'string',
+	// 	},
+	// }
 
-	constructor(creator: MigrationCreator = new MigrationCreator(fs)) {
-		this.creator = creator
-	}
+	protected creator?: MigrationCreator
 
-	builder(args: Argv) {
-		return args
-			.option('name', {
-				describe: 'The name of the migration.',
-				demand: true,
-				type: 'string',
-			})
-			.option('create', {
-				describe: 'The table to be created',
-				type: 'string',
-				default: false,
-			})
-			.option('table', {
-				describe: 'The table to migrate',
-			})
-			.option('path', {
-				describe: 'The location where the migration file should be created',
-			})
-			.option('realpath', {
-				describe: 'Indicate any provided migration file paths are pre-resolved',
-			})
-	}
+	// builder(args: Argv) {
+	// 	return args
+	// 		.option('create', {
+	// 			describe: 'The table to be created',
+	// 			type: 'string',
+	// 			default: false,
+	// 		})
+	// 		.option('table', {
+	// 			describe: 'The table to migrate',
+	// 			type: 'string',
+	// 		})
+	// 		.option('path', {
+	// 			describe: 'The location where the migration file should be created',
+	// 			type: 'string',
+	// 		})
+	// 		.option('realpath', {
+	// 			describe: 'Indicate any provided migration file paths are pre-resolved',
+	// 			type: 'string',
+	// 		})
+	// }
 
 	/**
 	 * Execute the console command.
 	 */
-	async handler(args: Arguments<Args>) {
+	handler(args: Arguments<Args>) {
+		console.log(args)
 		this.creator = new MigrationCreator(fs)
+		process.exit(0)
 		// It's possible for the developer to specify the tables to modify in this
 		// schema operation. The developer may also specify if this table needs
 		// to be freshly created so we can create the appropriate migrations.
-		const name = _.snakeCase(args.name.trim())
+		const name = _.snakeCase(args.name && args.name.trim())
 		let table = args.table
 		let create = args.create ? args.create : false
 
