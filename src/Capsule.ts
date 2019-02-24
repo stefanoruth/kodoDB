@@ -1,7 +1,5 @@
-import { Builder } from './Builder'
-import { ConnectionFactory } from './Connectors/ConnectionFactory'
 import { DatabaseManager } from './DatabaseManager'
-import { config, ConnectionConfig } from './config'
+import { config, DatabaseConfig } from './config'
 
 export class Capsule {
 	public static instance?: Capsule
@@ -31,7 +29,7 @@ export class Capsule {
 		return this.manager.connection(name)
 	}
 
-	addConnection(connection: ConnectionConfig, name: string = 'default') {
+	addConnection(connection: DatabaseConfig, name: string = 'default') {
 		config.connections[name] = connection
 
 		return this

@@ -1,4 +1,11 @@
+import { DatabaseConfig } from '../config'
+
 export interface DatabaseDriver {
+	/**
+	 * Converts the DatabaseConfig into a connection specefic config.
+	 */
+	mapConfig(config: DatabaseConfig): any
+
 	/**
 	 * Connect to the database.
 	 */

@@ -1,5 +1,6 @@
-import { ConnectionConfig } from '../config'
+import { ConnectorInterface } from './ConnectorInterface'
+import { DatabaseConfig } from '../config'
 
-export interface Connector {
-	connect: (config: ConnectionConfig) => any
+export abstract class Connector implements ConnectorInterface {
+	abstract connect(config: DatabaseConfig): any
 }

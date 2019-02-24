@@ -14,7 +14,7 @@ import {
 	QueryExecuted,
 	StatementPrepared,
 } from '../Events'
-import { ConnectionConfig } from '../config'
+import { DatabaseConfig } from '../config'
 import { ConnectionInterface, QueryLog } from './ConnectionInterface'
 import { DatabaseDriver } from '../Drivers/DatabaseDriver'
 
@@ -37,7 +37,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * The database connection configuration options.
 	 */
-	protected config: ConnectionConfig
+	protected config: DatabaseConfig
 
 	/**
 	 * The reconnector instance for the connection.
@@ -107,7 +107,7 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Create a new database connection instance.
 	 */
-	constructor(driver: DatabaseDriver, database: string = '', tablePrefix: string = '', config: ConnectionConfig) {
+	constructor(driver: DatabaseDriver, database: string = '', tablePrefix: string = '', config: DatabaseConfig) {
 		this.driver = driver
 
 		// First we will setup the default properties. We keep track of the DB
@@ -217,7 +217,7 @@ export abstract class Connection implements ConnectionInterface {
 			// For select statements, we'll simply execute the query and return an array
 			// of the database result set. Each element in the array will be a single
 			// row from the database table, and will either be an array or objects.
-			const statement = this.prepared(this.getDriverForSelect().prepare(query))
+			const statement = this.prepared(this.getDriver().prepare(query))
 			this.bindValues(statement, this.prepareBindings(bindings))
 			statement.execute()
 			return statement.fetchAll()
@@ -235,7 +235,7 @@ export abstract class Connection implements ConnectionInterface {
 			// First we will create a statement for the query. Then, we will set the fetch
 			// mode and prepare the bindings for the query. Once that's done we will be
 			// ready to execute the query against the database and return the cursor.
-			const statement = this.prepared(this.getDriverForSelect().prepare(query))
+			const statement = this.prepared(this.getDriver().prepare(query))
 
 			this.bindValues(statement, this.prepareBindings(bindings))
 			// Next, we'll execute the query against the database and return the statement
@@ -262,16 +262,6 @@ export abstract class Connection implements ConnectionInterface {
 		statement.setFetchMode(this.fetchMode)
 		this.event(new StatementPrepared(this, statement))
 		return statement
-	}
-
-	/**
-	 * Get the PDO connection to use for a select query.
-	 *
-	 * @param  bool  useReadPdo
-	 * @return \PDO
-	 */
-	protected getDriverForSelect(useReadPdo = true) {
-		return this.getDriver()
 	}
 
 	/**

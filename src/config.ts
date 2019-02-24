@@ -1,6 +1,6 @@
 export type DatabaseDrivers = 'mysql' | 'sqlite' | 'pgsql' | 'sqlsrv'
 
-export interface ConnectionConfig {
+export interface DatabaseConfig {
 	driver: DatabaseDrivers | string
 	host?: string
 	port?: string
@@ -20,16 +20,16 @@ export interface ConnectionConfig {
 	modes?: string
 }
 
-export interface DatabaseConfig {
+export interface Configuration {
 	default: string
-	connections: { [key: string]: ConnectionConfig }
+	connections: { [key: string]: DatabaseConfig }
 	migrations: {
 		path: string[]
 		table: string
 	}
 }
 
-export const config: DatabaseConfig = {
+export const config: Configuration = {
 	default: process.env.DB_CONNECTION || 'mysql',
 
 	connections: {

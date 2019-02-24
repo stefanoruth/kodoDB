@@ -1,4 +1,4 @@
-import { DatabaseConfig, ConnectionConfig, config as Configuration } from './config'
+import { DatabaseConfig, Configuration, config } from './config'
 import { ConnectionFactory } from './Connectors/ConnectionFactory'
 import { Connection } from './Connections/Connection'
 
@@ -12,11 +12,11 @@ export interface ConnectionResolver {
 
 export class DatabaseManager implements ConnectionResolver {
 	protected connections: DataBaseConnections = {}
-	protected config: DatabaseConfig
+	protected config: Configuration
 	protected factory: ConnectionFactory
 
 	constructor() {
-		this.config = Configuration
+		this.config = config
 		this.factory = new ConnectionFactory()
 	}
 
@@ -39,11 +39,11 @@ export class DatabaseManager implements ConnectionResolver {
 	}
 
 	makeConnection(name: string) {
-		const config = this.configuration(name)
+		const localConfig = this.configuration(name)
 
 		// Extensions?
 
-		return this.factory.make(config, name)
+		return this.factory.make(localConfig, name)
 	}
 
 	getDefaultConnection() {
@@ -54,7 +54,7 @@ export class DatabaseManager implements ConnectionResolver {
 		this.config.default = name
 	}
 
-	configuration(name?: string): ConnectionConfig {
+	configuration(name?: string): DatabaseConfig {
 		name = name || this.getDefaultConnection()
 
 		const connections = this.config.connections

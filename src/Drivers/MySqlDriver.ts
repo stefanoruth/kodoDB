@@ -1,14 +1,6 @@
 import { DatabaseDriver } from './DatabaseDriver'
-import { Connection, createConnection } from 'mysql'
-
-interface MySqlConfig {
-	host: string
-	port: number
-	database: string
-	user: string
-	password: string
-	charset: string
-}
+import { Connection, createConnection, ConnectionConfig } from 'mysql'
+import { DatabaseConfig } from '../config'
 
 export class MySqlDriver implements DatabaseDriver {
 	/**
@@ -16,8 +8,29 @@ export class MySqlDriver implements DatabaseDriver {
 	 */
 	protected connection: Connection
 
-	constructor(config: MySqlConfig) {
-		this.connection = createConnection(config)
+	constructor(config: DatabaseConfig) {
+		this.connection = createConnection(this.mapConfig(config))
+	}
+
+	/**
+	 * Converts the DatabaseConfig into a connection specefic config.
+	 */
+	mapConfig(config: DatabaseConfig): ConnectionConfig {
+		return {
+			// host: config.host,
+			// port: parseInt(config.port, 10) || 3306,
+			// localAddress: string;
+			// socketPath: string;
+			// timezone: string;
+			// connectTimeout: 10,
+			// stringifyObjects: false,
+			// insecureAuth: false
+			// supportBigNumbers?: boolean;
+			// bigNumberStrings?: boolean;
+			// dateStrings?: boolean | Array<'TIMESTAMP' | 'DATETIME' | 'DATE'>
+			// debug?: boolean | string[] | Types[];
+			// ssl?: string | (tls.SecureContextOptions & { rejectUnauthorized?: boolean });
+		}
 	}
 
 	/**
@@ -104,11 +117,11 @@ export class MySqlDriver implements DatabaseDriver {
 		})
 	}
 
-	async exec() {
-		//
+	async exec(query: string) {
+		console.log('EXEC', query)
 	}
 
-	async prepare() {
-		//
+	async prepare(query: string) {
+		console.log('PREPARE', query)
 	}
 }
