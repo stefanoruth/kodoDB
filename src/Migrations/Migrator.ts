@@ -1,11 +1,12 @@
-import { MigrationRepositoryInterface } from './DatabaseMigrationRepository'
 import * as fs from 'fs'
-import { ConnectionResolverInterface } from '../Connections/ConnectionResolver'
 import { SchemaGrammar } from '../Schema/Grammars/SchemaGrammar'
-import { Connection, QueryLog } from '../Connections/Connection'
 import { Migration } from './Migration'
 import { Collection } from '../Utils'
 import { basename } from 'path'
+import { MigrationRepositoryInterface } from './MigrationRepositoryInterface'
+import { ConnectionResolverInterface } from '../Connections/ConnectionResolverInterface'
+import { QueryLog } from '../Connections/ConnectionInterface'
+import { Connection } from '../Connections/Connection'
 
 interface MigratorOptions {
 	step?: number
@@ -187,7 +188,7 @@ export class Migrator {
 	 * Resolve a migration instance from a file.
 	 */
 	resolve(file: string): Migration {
-        // Todo Object.keys fetch first key to import class without default
+		// Todo Object.keys fetch first key to import class without default
 		const className = require(file).default
 
 		return new className()
