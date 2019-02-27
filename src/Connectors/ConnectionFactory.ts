@@ -3,6 +3,7 @@ import { MySqlConnector } from './MySqlConnector'
 import { MySqlConnection } from '../Connections/MySqlConnection'
 import { MySqlDriver } from '../Drivers/MySqlDriver'
 import { DatabaseDriver } from '../Drivers/DatabaseDriver'
+import { Connector } from './Connector'
 
 export class ConnectionFactory {
 	make(config: DatabaseConfig, name: string) {
@@ -11,7 +12,7 @@ export class ConnectionFactory {
 		return this.createConnection(config)
 	}
 
-	createConnector(config: DatabaseConfig) {
+	createConnector(config: DatabaseConfig): Connector {
 		switch (config.driver) {
 			case 'mysql':
 				return new MySqlConnector()
