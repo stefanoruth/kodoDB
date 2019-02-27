@@ -18,7 +18,7 @@
 		"watch": "yarn stubs && tsc --watch",
 		"test": "jest",
 		"lint": "tslint -c ./tslint.json ./src/*",
-		"stubs": "cp -r ./src/Migrations/stubs/ ./dist/Migrations/"
+		"stubs": "sh ./.bin/stubs.sh"
 	},
 	"devDependencies": {
 		"@types/jest": "^23.3.13",
