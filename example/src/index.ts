@@ -1,5 +1,16 @@
-import { Capsule } from 'kododb'
+import { Capsule, config, setConfig, Configuration } from 'kododb'
 
-new Capsule().setAsGlobal()
+new Capsule().setAsGlobal().addConnection({
+	driver: 'mysql',
+	host: 'localhost',
+	database: 'kodo',
+	username: 'root',
+})
 
-console.log(Capsule.table('users').get())
+// console.log(config)
+
+console.log(
+	Capsule.table('users', 'default')
+		.where('email', '=', 'stefano')
+		.toSql()
+)

@@ -3,6 +3,8 @@ import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
 import { ucfirst, Collection } from '../../Utils'
 import { Bindings } from '../Bindings'
+import { JoinClause } from '../JoinClause'
+import { WhereClause } from '../WhereClause'
 
 export class QueryGrammar extends BaseGrammar {
 	protected operators = []
@@ -10,7 +12,7 @@ export class QueryGrammar extends BaseGrammar {
 	protected selectComponents = [
 		'aggregate',
 		'columns',
-		'from',
+		'fromTable',
 		'joins',
 		'wheres',
 		'groups',
@@ -32,12 +34,14 @@ export class QueryGrammar extends BaseGrammar {
 		// * character to just get all of the columns from the database. Then we
 		// can build the query and concatenate all the pieces together as one.
 		const original = query.columns
-		if (query.columns === undefined) {
+		console.log('search', original)
+		if (query.columns.length === 0) {
 			query.columns = ['*']
 		}
 		// To compile the query, we'll spin through each component of the query and
 		// see if that component exists. If it does we'll just call the compiler
 		// function for the component which is responsible for making the SQL.
+		console.log('compileSelect', query.columns)
 		const sql = this.concatenate(this.compileComponents(query)).trim()
 		query.columns = original
 		return sql
@@ -53,12 +57,17 @@ export class QueryGrammar extends BaseGrammar {
 			// function for the component which is responsible for making the SQL.
 			if ((query as any)[component]) {
 				const method = 'compile' + ucfirst(component)
-				// console.log(method)
+				console.log('method', method)
 				if (typeof (this as any)[method] === 'function') {
+					console.log('method', method, component)
+					console.log((query as any)[component])
 					sql[component] = (this as any)[method](query, (query as any)[component])
 				}
+				console.log('\n')
 			}
 		})
+
+		console.log('compileComponents', sql)
 
 		return sql
 	}
@@ -68,63 +77,149 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	protected compileColumns(query: QueryBuilder, columns: any[]): string | void {
-		return ''
+		// If the query is actually performing an aggregating select, we will let that
+		// compiler handle the building of the select clauses, as it will need some
+		// more syntax that is best handled by that function to keep things neat.
+		if (query.aggregate) {
+			return
+		}
+
+		const select = query.distinct ? 'SELECT DISTINCT ' : 'SELECT '
+
+		return select + this.columnize(columns)
 	}
 
-	protected compileFrom(query: QueryBuilder, table: string): string {
-		return ''
+	protected compileFromTable(query: QueryBuilder, table: string): string {
+		// return ''
+		return 'FROM ' + this.wrapTable(table)
 	}
 
 	protected compileJoins(query: QueryBuilder, joins: any[]): string {
 		return ''
 	}
 
+	/**
+	 * Compile the "where" portions of the query.
+	 */
 	protected compileWheres(query: QueryBuilder): string {
+		// Each type of where clauses has its own compiler function which is responsible
+		// for actually creating the where clauses SQL. This helps keep the code nice
+		// and maintainable since each clause has a very small method that it uses.
+		if (!query.wheres) {
+			return ''
+		}
+
+		// If we actually have some where clauses, we will strip off the first boolean
+		// operator, which is added by the query builders for convenience so we can
+		// avoid checking for the first clauses in each of the compilers methods.
+		const sql = this.compileWheresToArray(query)
+		if (sql.length > 0) {
+			return this.concatenateWhereClauses(query, sql)
+		}
+
 		return ''
 	}
 
-	protected compileWheresToArray(query: QueryBuilder): [] {
-		return []
+	/**
+	 * Get an array of all the where clauses for the query.
+	 */
+	protected compileWheresToArray(query: QueryBuilder): any[] {
+		return new Collection(query.wheres)
+			.map(where => {
+				return where.bool + ' ' + (this as any)['where' + where.type](query, where)
+			})
+			.all()
 	}
 
-	protected concatenateWhereClauses(query: QueryBuilder, sql: string): string {
+	/**
+	 * Format the where clause statements into one string.
+	 */
+	protected concatenateWhereClauses(query: QueryBuilder, sql: string[]): string {
+		const conjunction = query instanceof JoinClause ? 'on' : 'where'
+
+		// $conjunction = $query instanceof JoinClause ? 'on' : 'where';
+		// return $conjunction.' '.$this -> removeLeadingBoolean(implode(' ', $sql));
+		return conjunction + ' ' + this.removeLeadingBoolean(sql.join(' '))
+	}
+
+	/**
+	 * Compile a raw where clause.
+	 */
+	protected whereRaw(query: QueryBuilder, where: WhereClause): string {
+		return String(where.sql)
+	}
+
+	/**
+	 * Compile a basic where clause.
+	 */
+	protected whereBasic(query: QueryBuilder, where: WhereClause): string {
+		const value = this.parameter(where.values)
+
+		return `${this.wrap(where.column)} ${where.operator} ${value}`
+	}
+
+	/**
+	 * Compile a "where in" clause.
+	 */
+	protected whereIn(query: QueryBuilder, where: WhereClause): string {
+		if (where.values instanceof Array && where.values.length > 0) {
+			return `${this.wrap(where.column)} IN (${this.parameterize(where.values)})`
+		}
+
+		return '0 = 1'
+	}
+
+	/**
+	 * Compile a "where not in" clause.
+	 */
+	protected whereNotIn(query: QueryBuilder, where: WhereClause): string {
+		if (where.values instanceof Array && where.values.length > 0) {
+			return `${this.wrap(where.column)} NOT IN (${this.parameterize(where.values)})`
+		}
+
+		return '1 = 1'
+	}
+
+	/**
+	 * Compile a "where not in raw" clause.
+	 *
+	 * For safety, whereIntegerInRaw ensures this method is only used with integer values.
+	 */
+	protected whereNotInRaw(query: QueryBuilder, where: WhereClause): string {
+		if (where.values instanceof Array && where.values.length > 0) {
+			return `${this.wrap(where.column)} NOT IN (${where.values.join(', ')})`
+		}
+
+		return '1 = 1'
+	}
+
+	/**
+	 * Compile a where in sub-select clause.
+	 */
+	protected whereInSub(query: QueryBuilder, where: WhereClause): string {
+		return `${this.wrap(where.column)} IN (${this.compileSelect(where.query)})`
+	}
+
+	protected whereNotInSub(query: QueryBuilder, where: WhereClause): string {
 		return ''
 	}
 
-	protected whereRaw(query: QueryBuilder, where: any[]): string {
+	protected whereInRaw(query: QueryBuilder, where: WhereClause): string {
 		return ''
 	}
 
-	protected whereBasic(query: QueryBuilder, where: any[]): string {
-		return ''
+	/**
+	 * Compile a "where null" clause.
+	 */
+	protected whereNull(query: QueryBuilder, where: WhereClause): string {
+		return this.wrap(where.column) + ' IS NULL'
 	}
 
-	protected whereIn(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereNotIn(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereNotInRaw(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereInSub(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereNotInSub(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereInRaw(query: QueryBuilder, where: any[]): string {
-		return ''
-	}
-
-	protected whereNull(query: QueryBuilder, where: any): string {
-		return this.wrap(where.column) + ' is null'
+	/**
+	 * Compile a "where not null" clause.
+	 */
+	protected whereNotNull(query: QueryBuilder, where: WhereClause): string {
+		return this.wrap(where.column) + ' IS NOT NULL'
 	}
 
 	// Compile a union aggregate query into SQL.
@@ -259,6 +354,8 @@ export class QueryGrammar extends BaseGrammar {
 			}
 		}
 
+		console.log('concatenate', result.length, result)
+
 		return result.trim()
 
 		// return segments
@@ -266,6 +363,13 @@ export class QueryGrammar extends BaseGrammar {
 		// 		return value !== ''
 		// 	})
 		// 	.join(' ')
+	}
+
+	/**
+	 * Remove the leading boolean from a statement.
+	 */
+	protected removeLeadingBoolean(value: string): string {
+		return value.replace(/and |or /i, '')
 	}
 
 	/**

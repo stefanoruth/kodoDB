@@ -4,16 +4,7 @@ import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection, tap } from '../Utils'
 import { Bindings, BindingKeys, BindingType } from './Bindings'
 import { Expression } from './Expression'
-
-interface WhereClause {
-	type: string
-	column: string
-	operator: string
-	value: string | number | null
-	bool: WhereBoolean
-}
-
-export type WhereBoolean = 'and' | 'or'
+import { WhereClause, WhereBoolean } from './WhereClause'
 
 export class QueryBuilder {
 	/**
@@ -55,6 +46,11 @@ export class QueryBuilder {
 	 * The columns that should be returned.
 	 */
 	columns: string[] = ['*']
+
+	/**
+	 * Indicates if the query returns distinct results.
+	 */
+	distinct: boolean = false
 
 	/**
 	 * The table which the query is targeting.
@@ -151,7 +147,7 @@ export class QueryBuilder {
 	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: string | string[], operator: string | any, value?: any, bool: WhereBoolean = 'and'): QueryBuilder {
+	where(column: string | string[], operator: any, value?: any, bool: WhereBoolean = 'and'): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -163,7 +159,9 @@ export class QueryBuilder {
 		// Here we will make some assumptions about the operator. If only 2 values are
 		// passed to the method, we will assume that the operator is an equals sign
 		// and keep going. Otherwise, we'll require the operator to be passed in.
+		console.log('pure', value, operator)
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+		console.log('formatted', value, operator)
 
 		// If the columns is actually a Closure instance, we will assume the developer
 		// wants to begin a nested where statement which is wrapped in parenthesis.
@@ -177,6 +175,7 @@ export class QueryBuilder {
 		// assume that the developer is just short-cutting the '=' operators and
 		// we will set the operators to '=' and set the values appropriately.
 		if (this.invalidOperator(operator)) {
+			console.log('invalidOperator', operator)
 			;[value, operator] = [operator, '=']
 		}
 
@@ -207,7 +206,10 @@ export class QueryBuilder {
 		// in our array and add the query binding to our array of bindings that
 		// will be bound to each SQL statements when it is finally executed.
 		const type = 'Basic'
-		this.wheres.push({ type, column, operator, value, bool })
+		// console.log(type)
+		this.wheres.push({ type, column, operator, values: value, bool })
+
+		console.log(this.wheres)
 
 		if (!(value instanceof Expression)) {
 			this.addBinding(value, 'where')
@@ -220,6 +222,7 @@ export class QueryBuilder {
 	 * Prepare the value and operator for a where clause.
 	 */
 	prepareValueAndOperator(value: any, operator: string, useDefault: boolean = false): any[] {
+		console.log('prepareValueAndOperator', value, operator, useDefault)
 		if (useDefault) {
 			return [operator, '=']
 		} else if (this.invalidOperatorAndValue(operator, value)) {
@@ -234,7 +237,8 @@ export class QueryBuilder {
 	 * Prevents using Null values with invalid operators.
 	 */
 	protected invalidOperatorAndValue(operator: string, value: any): boolean {
-		return value && this.operators.indexOf(operator) > -1 && ['=', '<>', '!='].indexOf(operator) !== -1
+		console.log('invalidOperatorAndValue', operator, value)
+		return value === undefined && this.operators.indexOf(operator) > -1 && ['=', '<>', '!='].indexOf(operator) !== -1
 	}
 
 	/**
@@ -303,7 +307,8 @@ export class QueryBuilder {
 	/**
 	 * Run the query as a "select" statement against the connection.
 	 */
-	protected runSelect(): any[] {
+	protected runSelect() {
+		console.log(this.toSql())
 		return this.connection.select(this.toSql(), this.getBindings())
 	}
 

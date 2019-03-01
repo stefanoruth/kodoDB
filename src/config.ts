@@ -29,7 +29,7 @@ export interface Configuration {
 	}
 }
 
-export const config: Configuration = {
+export let config: Configuration = {
 	default: process.env.DB_CONNECTION || 'mysql',
 
 	connections: {
@@ -43,7 +43,7 @@ export const config: Configuration = {
 		mysql: {
 			driver: 'mysql',
 			host: process.env.DB_HOST || '127.0.0.1',
-			port: process.env.DB_PORT || '3606',
+			port: process.env.DB_PORT || '3306',
 			database: process.env.DB_DATABASE || '',
 			username: process.env.DB_USERNAME || '',
 			password: process.env.DB_PASSWORD || '',
@@ -87,4 +87,8 @@ export const config: Configuration = {
 		path: ['example/migrations'],
 		table: 'migrations',
 	},
+}
+
+export const setConfig = (callback: (baseConfig: Configuration) => any) => {
+	config = callback(config)
 }

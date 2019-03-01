@@ -39,3 +39,7 @@ export interface DatabaseDriver {
 	exec(query: string): any
 	prepare(query: string): any
 }
+
+export interface DatabaseStatement {
+	execute(values: any[]): Promise<any>
+}

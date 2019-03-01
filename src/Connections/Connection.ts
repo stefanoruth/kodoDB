@@ -16,7 +16,7 @@ import {
 } from '../Events'
 import { DatabaseConfig } from '../config'
 import { ConnectionInterface, QueryLog } from './ConnectionInterface'
-import { DatabaseDriver } from '../Drivers/DatabaseDriver'
+import { DatabaseDriver, DatabaseStatement } from '../Drivers/DatabaseDriver'
 
 export abstract class Connection implements ConnectionInterface {
 	/**
@@ -209,8 +209,8 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Run a select statement against the database.
 	 */
-	select(query: string, bindings: any[] = []): [] {
-		return this.run(query, bindings, () => {
+	select(query: string, bindings: any[] = []) {
+		return this.run(query, bindings, async () => {
 			if (this.isPretending()) {
 				return []
 			}
@@ -219,7 +219,7 @@ export abstract class Connection implements ConnectionInterface {
 			// row from the database table, and will either be an array or objects.
 			const statement = this.prepared(this.getDriver().prepare(query))
 			this.bindValues(statement, this.prepareBindings(bindings))
-			statement.execute()
+			await statement.execute()
 			return statement.fetchAll()
 		})
 	}
@@ -257,9 +257,9 @@ export abstract class Connection implements ConnectionInterface {
 	/**
 	 * Configure the PDO prepared statement.
 	 */
-	protected prepared(statement: any): any {
+	protected prepared(statement: DatabaseStatement): any {
 		// PDOStatement
-		statement.setFetchMode(this.fetchMode)
+		// statement.setFetchMode(this.fetchMode)
 		this.event(new StatementPrepared(this, statement))
 		return statement
 	}

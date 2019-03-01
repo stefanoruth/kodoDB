@@ -1,4 +1,5 @@
 import { Connection } from '../Connections/Connection'
+import { DatabaseStatement } from '../Drivers/DatabaseDriver'
 
 export class StatementPrepared {
 	/**
@@ -9,12 +10,12 @@ export class StatementPrepared {
 	/**
 	 * The Query statement.
 	 */
-	statement: string
+	statement: DatabaseStatement
 
 	/**
 	 * Create a new event instance.
 	 */
-	constructor(connection: Connection, statement: string) {
+	constructor(connection: Connection, statement: DatabaseStatement) {
 		this.statement = statement
 		this.connection = connection
 	}
