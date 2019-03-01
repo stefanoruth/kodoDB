@@ -13,5 +13,5 @@
 		"alwaysStrict": true,
 		"esModuleInterop": true
 	},
-	"exclude": ["tests", "dist", "example"]
+	"exclude": ["../tests", "../dist", "../src"]
 }

@@ -53,6 +53,7 @@ export class QueryGrammar extends BaseGrammar {
 			// function for the component which is responsible for making the SQL.
 			if ((query as any)[component]) {
 				const method = 'compile' + ucfirst(component)
+				// console.log(method)
 				if (typeof (this as any)[method] === 'function') {
 					sql[component] = (this as any)[method](query, (query as any)[component])
 				}
@@ -243,12 +244,28 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	// Concatenate an array of segments, removing empties.
-	protected concatenate(segments: any[]): string {
-		return segments
-			.filter(value => {
-				return value !== ''
-			})
-			.join(' ')
+	protected concatenate(segments: any): string {
+		// console.log(segments)
+
+		let result = ''
+
+		for (const key in segments) {
+			if (segments.hasOwnProperty(key)) {
+				const element = segments[key]
+
+				if (element !== '') {
+					result += element + ' '
+				}
+			}
+		}
+
+		return result.trim()
+
+		// return segments
+		// 	.filter(value => {
+		// 		return value !== ''
+		// 	})
+		// 	.join(' ')
 	}
 
 	/**

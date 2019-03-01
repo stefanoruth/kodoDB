@@ -16,43 +16,35 @@ export class MigrateMakeCommand implements CommandModule<{}, Args> {
 	command = 'make:migration <name>'
 	describe = 'Make migration'
 
-	// builder = {
-	// 	create: {
-	// 		desc: 'Der',
-	// 		type: 'string',
-	// 	},
-	// }
-
 	protected creator?: MigrationCreator
 
-	// builder(args: Argv) {
-	// 	return args
-	// 		.option('create', {
-	// 			describe: 'The table to be created',
-	// 			type: 'string',
-	// 			default: false,
-	// 		})
-	// 		.option('table', {
-	// 			describe: 'The table to migrate',
-	// 			type: 'string',
-	// 		})
-	// 		.option('path', {
-	// 			describe: 'The location where the migration file should be created',
-	// 			type: 'string',
-	// 		})
-	// 		.option('realpath', {
-	// 			describe: 'Indicate any provided migration file paths are pre-resolved',
-	// 			type: 'string',
-	// 		})
-	// }
+	builder(args: Argv) {
+		return args
+			.option('create', {
+				describe: 'The table to be created',
+				type: 'string',
+				default: false,
+			})
+			.option('table', {
+				describe: 'The table to migrate',
+				type: 'string',
+			})
+			.option('path', {
+				describe: 'The location where the migration file should be created',
+				type: 'string',
+			})
+			.option('realpath', {
+				describe: 'Indicate any provided migration file paths are pre-resolved',
+				type: 'string',
+			})
+	}
 
 	/**
 	 * Execute the console command.
 	 */
 	handler(args: Arguments<Args>) {
-		console.log(args)
 		this.creator = new MigrationCreator(fs)
-		process.exit(0)
+
 		// It's possible for the developer to specify the tables to modify in this
 		// schema operation. The developer may also specify if this table needs
 		// to be freshly created so we can create the appropriate migrations.
