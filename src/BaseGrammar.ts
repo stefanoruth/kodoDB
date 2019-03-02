@@ -16,20 +16,20 @@ export class BaseGrammar {
 		return this.getValue(table)
 	}
 
-	wrap(value: string | Expression, prefixAlias: boolean = false): string {
+	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string {
 		if (value instanceof Expression) {
 			return this.getValue(value)
 		}
 
 		if (value.toString().indexOf(' as ') > -1) {
-			return this.wrapAliasedValue(value, prefixAlias)
+			return this.wrapAliasedValue(value.toString(), prefixAlias)
 		}
 
 		return this.wrapSegments(value.toString().split('.'))
 	}
 
 	wrapAliasedValue(value: string, prefixAlias: boolean = false): string {
-		const segments = value.split('/s+ass+/i')
+		const segments = value.split(/\s+as\s+/i)
 		// If we are wrapping a table we need to prefix the alias with the table prefix
 		// as well in order to generate proper syntax. If this is a column of course
 		// no prefix is necessary. The condition will be true when from wrapTable.

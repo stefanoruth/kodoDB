@@ -1,9 +1,9 @@
-export type WhereBoolean = 'and' | 'or'
+export type WhereBoolean = 'AND' | 'OR'
 
 export interface WhereClause {
 	type: string
-	column: string
-	operator: string
+	column: string | string[]
+	operator?: string
 	values: string | number | null | []
 	bool: WhereBoolean
 	sql?: string

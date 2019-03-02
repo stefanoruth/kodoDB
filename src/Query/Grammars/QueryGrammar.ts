@@ -34,14 +34,12 @@ export class QueryGrammar extends BaseGrammar {
 		// * character to just get all of the columns from the database. Then we
 		// can build the query and concatenate all the pieces together as one.
 		const original = query.columns
-		console.log('search', original)
 		if (query.columns.length === 0) {
 			query.columns = ['*']
 		}
 		// To compile the query, we'll spin through each component of the query and
 		// see if that component exists. If it does we'll just call the compiler
 		// function for the component which is responsible for making the SQL.
-		console.log('compileSelect', query.columns)
 		const sql = this.concatenate(this.compileComponents(query)).trim()
 		query.columns = original
 		return sql
@@ -57,17 +55,11 @@ export class QueryGrammar extends BaseGrammar {
 			// function for the component which is responsible for making the SQL.
 			if ((query as any)[component]) {
 				const method = 'compile' + ucfirst(component)
-				console.log('method', method)
 				if (typeof (this as any)[method] === 'function') {
-					console.log('method', method, component)
-					console.log((query as any)[component])
 					sql[component] = (this as any)[method](query, (query as any)[component])
 				}
-				console.log('\n')
 			}
 		})
-
-		console.log('compileComponents', sql)
 
 		return sql
 	}
@@ -308,17 +300,17 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap(value: string | Expression, prefixAlias: boolean = false): string {
+	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string {
 		if (value instanceof Expression) {
 			return this.getValue(value)
 		}
 
 		if (value.toString().indexOf(' as ') !== -1) {
-			return this.wrapAliasedValue(value, prefixAlias)
+			return this.wrapAliasedValue(value.toString(), prefixAlias)
 		}
 
-		if (this.isJsonSelector(value)) {
-			return this.wrapJsonSelector(value)
+		if (this.isJsonSelector(value.toString())) {
+			return this.wrapJsonSelector(value.toString())
 		}
 
 		return this.wrapSegments(value.toString().split('.'))
@@ -340,8 +332,6 @@ export class QueryGrammar extends BaseGrammar {
 
 	// Concatenate an array of segments, removing empties.
 	protected concatenate(segments: any): string {
-		// console.log(segments)
-
 		let result = ''
 
 		for (const key in segments) {
@@ -354,15 +344,7 @@ export class QueryGrammar extends BaseGrammar {
 			}
 		}
 
-		console.log('concatenate', result.length, result)
-
 		return result.trim()
-
-		// return segments
-		// 	.filter(value => {
-		// 		return value !== ''
-		// 	})
-		// 	.join(' ')
 	}
 
 	/**

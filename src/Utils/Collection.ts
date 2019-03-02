@@ -57,6 +57,13 @@ export class Collection<T = any> {
 	}
 
 	/**
+	 * Get all of the items in the collection.
+	 */
+	toArray(): T[] {
+		return this.items
+	}
+
+	/**
 	 * Map a collection and flatten the result by a single level.
 	 */
 	flatMap(callback: ArrayFn): Collection<T> {
@@ -208,7 +215,7 @@ export class Collection<T = any> {
 	 * Flatten a multi-dimensional array into a single level.
 	 */
 	flatten(depth: number = Infinity, array?: any[]): Collection<T> {
-		const result: any[] = []
+		let result: any[] = []
 
 		if (typeof array === 'undefined') {
 			array = this.items
@@ -218,9 +225,9 @@ export class Collection<T = any> {
 			if (!(item instanceof Array)) {
 				result.push(item)
 			} else if (depth === 1) {
-				result.concat(item.values())
+				result = result.concat(item.values())
 			} else {
-				result.concat(this.flatten(depth - 1, item))
+				result = result.concat(this.flatten(depth - 1, item).toArray())
 			}
 		})
 

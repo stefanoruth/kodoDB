@@ -7,10 +7,31 @@ new Capsule().setAsGlobal().addConnection({
 	username: 'root',
 })
 
-// console.log(config)
+const buildQuery = (query: string, values: any[]): string => {
+	values.forEach(binding => {
+		let value
 
-console.log(
-	Capsule.table('users', 'default')
-		.where('email', '=', 'stefano')
-		.toSql()
-)
+		if (typeof binding === 'string') {
+			value = `"${binding}"`
+		} else if (typeof binding === 'number' || typeof binding === 'bigint') {
+			value = `${binding}`
+		} else if (typeof binding === 'boolean') {
+			value = `${binding ? 1 : 0}`
+		} else {
+			value = '""'
+		}
+
+		query = query.replace('?', value)
+	})
+
+	return query
+}
+
+const query = Capsule.table('users', 'default')
+
+query
+	.where('email', '=', 'stefano')
+	.whereIn('status', ['active', 'inactive'])
+	.where('active', true)
+
+console.log(buildQuery(query.toSql(), query.getBindings()))

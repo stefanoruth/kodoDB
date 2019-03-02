@@ -5,6 +5,10 @@ import { Collection, tap } from '../Utils'
 import { Bindings, BindingKeys, BindingType } from './Bindings'
 import { Expression } from './Expression'
 import { WhereClause, WhereBoolean } from './WhereClause'
+import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
+import { Arr } from '../Utils/Arr'
+
+type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
 
 export class QueryBuilder {
 	/**
@@ -45,7 +49,7 @@ export class QueryBuilder {
 	/**
 	 * The columns that should be returned.
 	 */
-	columns: string[] = ['*']
+	columns?: string[]
 
 	/**
 	 * Indicates if the query returns distinct results.
@@ -136,6 +140,38 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Creates a subquery and parse it.
+	 */
+	protected createSub(query: QueryBuilder | EloquentBuilder | string | QueryFn): [string, any[]] {
+		// If the given query is a Closure, we will execute it while passing in a new
+		// query instance to the Closure. This will give the developer a chance to
+		// format and work with the query before we cast it to a raw SQL string.
+		if (typeof query === 'function') {
+			const callback = query
+			query = this.forSubQuery()
+			callback(query)
+		}
+
+		return this.parseSub(query)
+	}
+
+	/**
+	 * Parse the subquery into SQL and bindings.
+	 *
+	 * @param  mixed  $query
+	 * @return array
+	 */
+	protected parseSub(query: QueryBuilder | EloquentBuilder | string): [string, any[]] {
+		if (query instanceof QueryBuilder || query instanceof EloquentBuilder) {
+			return [query.toSql(), query.getBindings()]
+		} else if (typeof query === 'string') {
+			return [query, []]
+		} else {
+			throw new Error('InvalidArgumentException')
+		}
+	}
+
+	/**
 	 * Set the table which the query is targeting.
 	 */
 	from(table: string): QueryBuilder {
@@ -147,7 +183,7 @@ export class QueryBuilder {
 	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: string | string[], operator: any, value?: any, bool: WhereBoolean = 'and'): QueryBuilder {
+	where(column: string | string[], operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -159,9 +195,7 @@ export class QueryBuilder {
 		// Here we will make some assumptions about the operator. If only 2 values are
 		// passed to the method, we will assume that the operator is an equals sign
 		// and keep going. Otherwise, we'll require the operator to be passed in.
-		console.log('pure', value, operator)
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
-		console.log('formatted', value, operator)
 
 		// If the columns is actually a Closure instance, we will assume the developer
 		// wants to begin a nested where statement which is wrapped in parenthesis.
@@ -175,7 +209,6 @@ export class QueryBuilder {
 		// assume that the developer is just short-cutting the '=' operators and
 		// we will set the operators to '=' and set the values appropriately.
 		if (this.invalidOperator(operator)) {
-			console.log('invalidOperator', operator)
 			;[value, operator] = [operator, '=']
 		}
 
@@ -206,10 +239,7 @@ export class QueryBuilder {
 		// in our array and add the query binding to our array of bindings that
 		// will be bound to each SQL statements when it is finally executed.
 		const type = 'Basic'
-		// console.log(type)
 		this.wheres.push({ type, column, operator, values: value, bool })
-
-		console.log(this.wheres)
 
 		if (!(value instanceof Expression)) {
 			this.addBinding(value, 'where')
@@ -222,7 +252,6 @@ export class QueryBuilder {
 	 * Prepare the value and operator for a where clause.
 	 */
 	prepareValueAndOperator(value: any, operator: string, useDefault: boolean = false): any[] {
-		console.log('prepareValueAndOperator', value, operator, useDefault)
 		if (useDefault) {
 			return [operator, '=']
 		} else if (this.invalidOperatorAndValue(operator, value)) {
@@ -237,7 +266,6 @@ export class QueryBuilder {
 	 * Prevents using Null values with invalid operators.
 	 */
 	protected invalidOperatorAndValue(operator: string, value: any): boolean {
-		console.log('invalidOperatorAndValue', operator, value)
 		return value === undefined && this.operators.indexOf(operator) > -1 && ['=', '<>', '!='].indexOf(operator) !== -1
 	}
 
@@ -252,12 +280,44 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a "where in" clause to the query.
+	 */
+	whereIn(column: string | string[], values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = not ? 'NotIn' : 'In'
+
+		// If the value is a query builder instance we will assume the developer wants to
+		// look for any values that exists within this given query. So we will add the
+		// query accordingly so that this query is properly executed when it is run.
+		if (values instanceof QueryBuilder || values instanceof EloquentBuilder || typeof values === 'function') {
+			const [query, bindings] = this.createSub(values)
+			values = [new Expression(query)]
+			this.addBinding(bindings, 'where')
+		}
+
+		// Next, if the value is Arrayable we need to cast it to its raw array form so we
+		// have the underlying array value instead of an Arrayable object which is not
+		// able to be added as a binding, etc. We will then add to the wheres array.
+		if (values instanceof Collection) {
+			values = values.toArray()
+		}
+
+		this.wheres.push({ type, column, values, bool })
+
+		// Finally we'll add a binding for each values unless that value is an expression
+		// in which case we will just skip over it since it will be the query as a raw
+		// string and not as a parameterized place-holder to be replaced by the PDO.
+		this.addBinding(this.cleanBindings(values), 'where')
+
+		return this
+	}
+
+	/**
 	 * Add an "order by" clause to the query.
 	 */
 	orderBy(column: string, direction: string = 'asc'): QueryBuilder {
 		const order = {
 			column,
-			direction: direction.toLowerCase() === 'asc' ? 'asc' : 'desc',
+			direction: direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC',
 		}
 
 		if (this.unions) {
@@ -296,9 +356,9 @@ export class QueryBuilder {
 	/**
 	 * Execute the query as a "select" statement.
 	 */
-	get(columns: string[] = ['*']): Collection {
+	get(columns: string | string[] = ['*']): Collection {
 		return new Collection(
-			this.onceWithColumns(columns, () => {
+			this.onceWithColumns(Arr.wrap(columns), () => {
 				return this.processor.processSelect(this, this.runSelect())
 			})
 		)
@@ -308,7 +368,6 @@ export class QueryBuilder {
 	 * Run the query as a "select" statement against the connection.
 	 */
 	protected runSelect() {
-		console.log(this.toSql())
 		return this.connection.select(this.toSql(), this.getBindings())
 	}
 
@@ -430,11 +489,12 @@ export class QueryBuilder {
 	 * After running the callback, the columns are reset to the original value.
 	 */
 	protected onceWithColumns(columns: string[], callback: () => any): any {
-		const original = this.columns
-
+		const original = this.columns instanceof Array ? this.columns.slice() : undefined
+		// console.log(original)
 		if (!original) {
 			this.columns = columns
 		}
+		// console.log(original)
 		const result = callback()
 		this.columns = original
 		return result
@@ -481,6 +541,20 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Get a new instance of the query builder.
+	 */
+	newQuery(): QueryBuilder {
+		return new QueryBuilder(this.connection, this.grammar, this.processor)
+	}
+
+	/**
+	 * Create a new query instance for a sub-query.
+	 */
+	protected forSubQuery(): QueryBuilder {
+		return this.newQuery()
+	}
+
+	/**
 	 * Get the current query value bindings in a flattened array.
 	 */
 	getBindings(): any[] {
@@ -492,14 +566,15 @@ export class QueryBuilder {
 	 */
 	addBinding(value: any, type: BindingType = 'where'): QueryBuilder {
 		if (BindingKeys.indexOf(type) === -1) {
-			throw new Error('Invalid binding type: {$type}.')
+			throw new Error(`Invalid binding type: ${type}.`)
 		}
 
 		if (value instanceof Array) {
-			this.bindings[type].concat(value)
+			this.bindings[type] = this.bindings[type].concat(value)
 		} else {
 			this.bindings[type].push(value)
 		}
+
 		return this
 	}
 
