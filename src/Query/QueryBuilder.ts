@@ -49,7 +49,7 @@ export class QueryBuilder {
 	/**
 	 * The columns that should be returned.
 	 */
-	columns?: string[]
+	columns: string[] = []
 
 	/**
 	 * Indicates if the query returns distinct results.
@@ -489,12 +489,12 @@ export class QueryBuilder {
 	 * After running the callback, the columns are reset to the original value.
 	 */
 	protected onceWithColumns(columns: string[], callback: () => any): any {
-		const original = this.columns instanceof Array ? this.columns.slice() : undefined
-		// console.log(original)
+		const original = this.columns.slice()
+
 		if (!original) {
 			this.columns = columns
 		}
-		// console.log(original)
+
 		const result = callback()
 		this.columns = original
 		return result

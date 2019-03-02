@@ -35,15 +35,15 @@ describe('QueryBuilder', () => {
 		//     $this -> assertEquals('select "baz" from "users"', $sql);
 		// });
 		builder.from('users').get()
-		expect(builder.columns).toBeUndefined()
+		expect(builder.columns).toEqual([])
 
 		builder.from('users').get(['foo', 'bar'])
-		expect(builder.columns).toBeUndefined()
+		expect(builder.columns).toEqual([])
 
 		builder.from('users').get('baz')
-		expect(builder.columns).toBeUndefined()
+		expect(builder.columns).toEqual([])
 
 		expect(builder.toSql()).toBe('SELECT * FROM "users"')
-		expect(builder.columns).toBeUndefined()
+		expect(builder.columns).toEqual([])
 	})
 })
