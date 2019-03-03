@@ -27,13 +27,10 @@ const buildQuery = (query: string, values: any[]): string => {
 	return query
 }
 
-const query = Capsule.table('users', '  ')
+const q = Capsule.table('users', 'default')
 
-query
-	.where('email', '=', 'stefano')
+q.where('email', '=', 'stefano')
 	.whereIn('status', ['active', 'inactive'])
 	.where('active', true)
 
-console.log(buildQuery(query.toSql(), query.getBindings()))
-
-// export const default = {}
+console.log(buildQuery(q.toSql(), q.getBindings()))
