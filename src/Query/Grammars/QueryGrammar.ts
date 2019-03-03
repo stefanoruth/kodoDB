@@ -127,7 +127,7 @@ export class QueryGrammar extends BaseGrammar {
 	 * Format the where clause statements into one string.
 	 */
 	protected concatenateWhereClauses(query: QueryBuilder, sql: string[]): string {
-		const conjunction = query instanceof JoinClause ? 'on' : 'where'
+		const conjunction = query instanceof JoinClause ? 'ON' : 'WHERE'
 
 		// $conjunction = $query instanceof JoinClause ? 'on' : 'where';
 		// return $conjunction.' '.$this -> removeLeadingBoolean(implode(' ', $sql));
@@ -147,7 +147,7 @@ export class QueryGrammar extends BaseGrammar {
 	protected whereBasic(query: QueryBuilder, where: WhereClause): string {
 		const value = this.parameter(where.values)
 
-		return `${this.wrap(where.column)} ${where.operator} ${value}`
+		return `${this.wrap(where.column!)} ${where.operator} ${value}`
 	}
 
 	/**
@@ -155,7 +155,7 @@ export class QueryGrammar extends BaseGrammar {
 	 */
 	protected whereIn(query: QueryBuilder, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
-			return `${this.wrap(where.column)} IN (${this.parameterize(where.values)})`
+			return `${this.wrap(where.column!)} IN (${this.parameterize(where.values)})`
 		}
 
 		return '0 = 1'
@@ -166,7 +166,7 @@ export class QueryGrammar extends BaseGrammar {
 	 */
 	protected whereNotIn(query: QueryBuilder, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
-			return `${this.wrap(where.column)} NOT IN (${this.parameterize(where.values)})`
+			return `${this.wrap(where.column!)} NOT IN (${this.parameterize(where.values)})`
 		}
 
 		return '1 = 1'
@@ -179,7 +179,7 @@ export class QueryGrammar extends BaseGrammar {
 	 */
 	protected whereNotInRaw(query: QueryBuilder, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
-			return `${this.wrap(where.column)} NOT IN (${where.values.join(', ')})`
+			return `${this.wrap(where.column!)} NOT IN (${where.values.join(', ')})`
 		}
 
 		return '1 = 1'
@@ -189,7 +189,7 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile a where in sub-select clause.
 	 */
 	protected whereInSub(query: QueryBuilder, where: WhereClause): string {
-		return `${this.wrap(where.column)} IN (${this.compileSelect(where.query)})`
+		return `${this.wrap(where.column!)} IN (${this.compileSelect(where.query)})`
 	}
 
 	protected whereNotInSub(query: QueryBuilder, where: WhereClause): string {
@@ -204,14 +204,14 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile a "where null" clause.
 	 */
 	protected whereNull(query: QueryBuilder, where: WhereClause): string {
-		return this.wrap(where.column) + ' IS NULL'
+		return this.wrap(where.column!) + ' IS NULL'
 	}
 
 	/**
 	 * Compile a "where not null" clause.
 	 */
 	protected whereNotNull(query: QueryBuilder, where: WhereClause): string {
-		return this.wrap(where.column) + ' IS NOT NULL'
+		return this.wrap(where.column!) + ' IS NOT NULL'
 	}
 
 	// Compile a union aggregate query into SQL.
@@ -220,7 +220,7 @@ export class QueryGrammar extends BaseGrammar {
 
 		query.aggregate = undefined
 
-		return `${sql} from (${this.compileSelect(query)}) as ${this.wrapTable('temp_table')}`
+		return `${sql} FROM (${this.compileSelect(query)}) AS ${this.wrapTable('temp_table')}`
 	}
 
 	/**
@@ -245,7 +245,7 @@ export class QueryGrammar extends BaseGrammar {
 			})
 			.join(', ')
 
-		return `insert into ${table} (${columns}) values ${parameters}`
+		return `INSERT INTO ${table} (${columns}) VALUES ${parameters}`
 	}
 
 	/**
@@ -266,7 +266,7 @@ export class QueryGrammar extends BaseGrammar {
 	compileDelete(query: QueryBuilder): string {
 		const wheres = query.wheres instanceof Array ? this.compileWheres(query) : ''
 
-		return `delete from ${this.wrapTable(query.fromTable)} ${wheres}`.trim()
+		return `DELETE FROM ${this.wrapTable(query.fromTable)} ${wheres}`.trim()
 	}
 
 	/**

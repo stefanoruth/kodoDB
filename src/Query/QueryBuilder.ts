@@ -7,7 +7,7 @@ import { Expression } from './Expression'
 import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
-import { JoinClause } from './JoinClause'
+// import { JoinClause } from './JoinClause'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
 
@@ -243,8 +243,9 @@ export class QueryBuilder {
 	/**
 	 * Get a new join clause.
 	 */
-	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string): JoinClause {
-		return new JoinClause(parentQuery, type, table)
+	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string): QueryBuilder {
+		// return new JoinClause(parentQuery, type, table)
+		return new QueryBuilder(this.getConnection(), this.getGrammar(), this.getProcessor())
 	}
 
 	/**
@@ -968,5 +969,21 @@ export class QueryBuilder {
 				clone.bindings[type] = []
 			})
 		})
+	}
+
+	/**
+	 * Apply the callback's query changes if the given "value" is true.
+	 */
+	when<T>(
+		value: T,
+		callback: (query: QueryBuilder, condition: T) => QueryBuilder | void,
+		defaultValue?: (query: QueryBuilder, condition: T) => QueryBuilder | void
+	) {
+		if (value) {
+			return callback(this, value) || this
+		} else if (defaultValue) {
+			return defaultValue(this, value) || this
+		}
+		return this
 	}
 }

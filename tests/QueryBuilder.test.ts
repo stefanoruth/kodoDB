@@ -87,37 +87,110 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users"')
 	})
 
-	test('basicSelectDistinct', () => {
+	// test('basicSelectDistinct', () => {
+	// 	const builder = getBuilder()
+	// 	builder
+	// 		.distinct()
+	// 		.select('foo', 'bar')
+	// 		.from('users')
+	// 	expect(builder.toSql()).toBe('SELECT DISTINCT "foo", "bar" FROM "users"')
+	// })
+
+	// test('basicAlias', () => {
+	// 	const builder = getBuilder()
+	// 	builder.select('foo as bar').from('users')
+	// 	expect(builder.toSql()).toBe('SELECT "foo" as "bar" FROM "users"')
+	// })
+
+	// test('aliasWithPrefix', () => {
+	// 	const builder = getBuilder()
+	// 	builder.getGrammar().setTablePrefix('prefix_')
+	// 	builder.select('*').from('users as people')
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" as "prefix_people"')
+	// })
+
+	// test('joinAliasesWithPrefix', () => {
+	// 	const builder = getBuilder()
+	// 	builder.getGrammar().setTablePrefix('prefix_')
+	// 	builder
+	// 		.select('*')
+	// 		.from('services')
+	// 		.join('translations AS t', 't.item_id', '=', 'services.id')
+	// 	expect(builder.toSql()).toBe(
+	// 		'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
+	// 	)
+	// })
+
+	test('basicTableWrapping', () => {
 		const builder = getBuilder()
-		builder
-			.distinct()
-			.select('foo', 'bar')
-			.from('users')
-		expect(builder.toSql()).toBe('SELECT DISTINCT "foo", "bar" FROM "users"')
+		builder.select('*').from('public.users')
+		expect(builder.toSql()).toBe('SELECT * FROM "public"."users"')
 	})
 
-	test('basicAlias', () => {
-		const builder = getBuilder()
-		builder.select('foo as bar').from('users')
-		expect(builder.toSql()).toBe('SELECT "foo" as "bar" FROM "users"')
-	})
+	test('whenCallback', () => {
+		let builder
+		const callback = (query: any, condition: boolean) => {
+			expect(condition).toBeTruthy()
+			query.where('id', '=', 1)
+		}
 
-	test('aliasWithPrefix', () => {
-		const builder = getBuilder()
-		builder.getGrammar().setTablePrefix('prefix_')
-		builder.select('*').from('users as people')
-		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" as "prefix_people"')
-	})
-
-	test('joinAliasesWithPrefix', () => {
-		const builder = getBuilder()
-		builder.getGrammar().setTablePrefix('prefix_')
+		builder = getBuilder()
 		builder
 			.select('*')
-			.from('services')
-			.join('translations AS t', 't.item_id', '=', 'services.id')
-		expect(builder.toSql()).toBe(
-			'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
-		)
+			.from('users')
+			.when(true, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.when(false, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "email" = ?')
+	})
+
+	test('whenCallbackWithReturn', () => {
+		let builder
+		const callback = (query: any, condition: any) => {
+			expect(condition).toBeTruthy()
+			return query.where('id', '=', 1)
+		}
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.when(true, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.when(false, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "email" = ?')
+	})
+
+	test('whenCallbackWithDefault', () => {
+		// $callback = function ($query, $condition) {
+		//     $this -> assertEquals($condition, 'truthy');
+		//     $query -> where('id', '=', 1);
+		// };
+		// $default = function ($query, $condition) {
+		//     $this -> assertEquals($condition, 0);
+		//     $query -> where('id', '=', 2);
+		// };
+		// $builder = $this -> getBuilder();
+		// $builder -> select('*') -> from('users') -> when('truthy', $callback, $default) -> where('email', 'foo');
+		// $this -> assertEquals('select * from "users" where "id" = ? and "email" = ?', $builder -> toSql());
+		// $this -> assertEquals([0 => 1, 1 => 'foo'], $builder -> getBindings());
+		// $builder = $this -> getBuilder();
+		// $builder -> select('*') -> from('users') -> when(0, $callback, $default) -> where('email', 'foo');
+		// $this -> assertEquals('select * from "users" where "id" = ? and "email" = ?', $builder -> toSql());
+		// $this -> assertEquals([0 => 2, 1 => 'foo'], $builder -> getBindings());
 	})
 })
