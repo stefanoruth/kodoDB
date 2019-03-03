@@ -27,7 +27,7 @@ const buildQuery = (query: string, values: any[]): string => {
 	return query
 }
 
-const query = Capsule.table('users', 'default')
+const query = Capsule.table('users', '  ')
 
 query
 	.where('email', '=', 'stefano')
@@ -35,3 +35,5 @@ query
 	.where('active', true)
 
 console.log(buildQuery(query.toSql(), query.getBindings()))
+
+// export const default = {}

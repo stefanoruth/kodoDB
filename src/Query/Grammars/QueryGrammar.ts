@@ -76,7 +76,7 @@ export class QueryGrammar extends BaseGrammar {
 			return
 		}
 
-		const select = query.distinct ? 'SELECT DISTINCT ' : 'SELECT '
+		const select = query.distinctSelect ? 'SELECT DISTINCT ' : 'SELECT '
 
 		return select + this.columnize(columns)
 	}

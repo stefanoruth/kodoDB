@@ -7,8 +7,12 @@ import { Expression } from './Expression'
 import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
+import { JoinClause } from './JoinClause'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
+
+export type Column = string | string[]
+type ColumnFn = () => void
 
 export class QueryBuilder {
 	/**
@@ -54,12 +58,17 @@ export class QueryBuilder {
 	/**
 	 * Indicates if the query returns distinct results.
 	 */
-	distinct: boolean = false
+	distinctSelect: boolean = false
 
 	/**
 	 * The table which the query is targeting.
 	 */
 	fromTable: string = ''
+
+	/**
+	 * The table joins for the query.
+	 */
+	joins: string[] = []
 
 	/**
 	 * The where constraints for the query.
@@ -133,8 +142,8 @@ export class QueryBuilder {
 	/**
 	 * Set the columns to be selected.
 	 */
-	select(columns: string[] | string = ['*']): QueryBuilder {
-		this.columns = columns instanceof Array ? columns : [columns]
+	select(column: Column = ['*'], ...columns: string[]): QueryBuilder {
+		this.columns = column instanceof Array ? column : [column, ...columns]
 
 		return this
 	}
@@ -172,6 +181,26 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a new select column to the query.
+	 */
+	addSelect(column: Column, ...columns: string[]): QueryBuilder {
+		column = column instanceof Array ? column : [column, ...columns]
+
+		this.columns = this.columns.concat(column)
+
+		return this
+	}
+
+	/**
+	 * Force the query to only return distinct results.
+	 */
+	distinct(): QueryBuilder {
+		this.distinctSelect = true
+
+		return this
+	}
+
+	/**
 	 * Set the table which the query is targeting.
 	 */
 	from(table: string): QueryBuilder {
@@ -181,15 +210,52 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a join clause to the query.
+	 */
+	join(
+		table: string,
+		first: string, // | () => void,
+		operator?: string,
+		second?: string,
+		type: string = 'inner',
+		where: boolean = false
+	): QueryBuilder {
+		const join = this.newJoinClause(this, type, table)
+		// If the first "column" of the join is really a Closure instance the developer
+		// is trying to build a join with a complex "on" clause containing more than
+		// one condition, so we'll add the join and call a Closure with the query.
+		if (typeof first === 'function') {
+			// first(join)
+			// this.joins.push(join)
+			this.addBinding(join.getBindings(), 'join')
+		}
+		// If the column is simply a string, we can assume the join simply has a basic
+		// "on" clause with a single condition. So we will just build the join with
+		// this simple join clauses attached to it. There is not a join callback.
+		else {
+			const method = where ? 'where' : 'on'
+			this.joins.push((join as any)[method](first, operator, second))
+			this.addBinding(join.getBindings(), 'join')
+		}
+		return this
+	}
+
+	/**
+	 * Get a new join clause.
+	 */
+	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string): JoinClause {
+		return new JoinClause(parentQuery, type, table)
+	}
+
+	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: string | string[], operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	where(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
 		if (column instanceof Array) {
-			// return this.addArrayOfWheres(column, bool);
-			return this
+			return this.addArrayOfWheres(column, bool)
 		}
 
 		// Here we will make some assumptions about the operator. If only 2 values are
@@ -201,8 +267,7 @@ export class QueryBuilder {
 		// wants to begin a nested where statement which is wrapped in parenthesis.
 		// We'll add that Closure to the query then return back out immediately.
 		if (typeof column === 'function') {
-			// return this.whereNested(column, bool);
-			return this
+			return this.whereNested(column, bool)
 		}
 
 		// If the given operator is not found in the list of valid operators we will
@@ -216,16 +281,14 @@ export class QueryBuilder {
 		// sub-select within the query and we will need to compile the sub-select
 		// within the where clause to get the appropriate query record results.
 		if (typeof value === 'function') {
-			// return this.whereSub(column, operator, value, boolean);
-			return this
+			return this.whereSub(column, operator, value, bool)
 		}
 
 		// If the value is "null", we will just assume the developer wants to add a
 		// where null clause to the query. So, we will allow a short-cut here to
 		// that method for convenience so the developer doesn't have to check.
 		if (value === null) {
-			// return this.whereNull(column, boolean, operator !== '=');
-			return this
+			return this.whereNull(column, bool, operator !== '=')
 		}
 
 		// If the column is making a JSON reference we'll check to see if the value
@@ -246,6 +309,21 @@ export class QueryBuilder {
 		}
 
 		return this
+	}
+
+	/**
+	 * Add an array of where clauses to the query.
+	 */
+	protected addArrayOfWheres(columns: any[], bool: WhereBoolean, method: string = 'where'): QueryBuilder {
+		return this.whereNested(query => {
+			columns.forEach((value, key) => {
+				if (value instanceof Array) {
+					;(query as any)[method](...value)
+				} else {
+					;(query as any)[method](key, '=', value, bool)
+				}
+			})
+		}, bool)
 	}
 
 	/**
@@ -280,9 +358,68 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add an "or where" clause to the query.
+	 */
+	orWhere(column: string | string[], operator: any, value?: any): QueryBuilder {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		return this.where(column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "where" clause comparing two columns to the query.
+	 */
+	whereColumn(first: string | string[], operator: any, second?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+		// If the column is an array, we will assume it is an array of key-value pairs
+		// and can add them each as a where clause. We will maintain the boolean we
+		// received when the method was called and pass it into the nested where.
+		if (first instanceof Array) {
+			return this.addArrayOfWheres(first, bool, 'whereColumn')
+		}
+		// If the given operator is not found in the list of valid operators we will
+		// assume that the developer is just short-cutting the '=' operators and
+		// we will set the operators to '=' and set the values appropriately.
+		if (this.invalidOperator(operator)) {
+			;[second, operator] = [operator, '=']
+		}
+		// Finally, we will add this where clause into this array of clauses that we
+		// are building for the query. All of them will be compiled via a grammar
+		// once the query is about to be executed and run against the database.
+		const type = 'Column'
+
+		this.wheres.push({ type, first, operator, second, bool })
+
+		return this
+	}
+
+	/**
+	 * Add an "or where" clause comparing two columns to the query.
+	 */
+	orWhereColumn(first: string | string[], operator?: any, second?: string): QueryBuilder {
+		return this.whereColumn(first, operator, second, 'OR')
+	}
+
+	/**
+	 * Add a raw where clause to the query.
+	 */
+	whereRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
+		this.wheres.push({ type: 'raw', sql, bool })
+		this.addBinding(bindings, 'where')
+
+		return this
+	}
+
+	/**
+	 * Add a raw or where clause to the query.
+	 */
+	orWhereRaw(sql: string, bindings: any[]): QueryBuilder {
+		return this.whereRaw(sql, bindings, 'OR')
+	}
+
+	/**
 	 * Add a "where in" clause to the query.
 	 */
-	whereIn(column: string | string[], values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereIn(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
 		const type = not ? 'NotIn' : 'In'
 
 		// If the value is a query builder instance we will assume the developer wants to
@@ -307,6 +444,195 @@ export class QueryBuilder {
 		// in which case we will just skip over it since it will be the query as a raw
 		// string and not as a parameterized place-holder to be replaced by the PDO.
 		this.addBinding(this.cleanBindings(values), 'where')
+
+		return this
+	}
+
+	/**
+	 * Add an "or where in" clause to the query.
+	 */
+	orWhereIn(column: Column, values: any): QueryBuilder {
+		return this.whereIn(column, values, 'OR')
+	}
+
+	/**
+	 * Add a "where not in" clause to the query.
+	 */
+	whereNotIn(column: Column, values: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+		return this.whereIn(column, values, bool, true)
+	}
+	/**
+	 * Add an "or where not in" clause to the query.
+	 */
+	orWhereNotIn(column: Column, values: any): QueryBuilder {
+		return this.whereNotIn(column, values, 'OR')
+	}
+
+	/**
+	 * Add a where in with a sub-select to the query.
+	 */
+	protected whereInSub(column: Column, callback: QueryFn, bool: WhereBoolean, not: boolean): QueryBuilder {
+		const type = not ? 'NotInSub' : 'InSub'
+		// To create the exists sub-select, we will actually create a query and call the
+		// provided callback with the query so the developer may set any of the query
+		// conditions they want for the in clause, then we'll put it in this array.
+		const query = this.forSubQuery()
+		callback(query)
+
+		this.wheres.push({ type, column, query, bool })
+		this.addBinding(query.getBindings, 'where')
+
+		return this
+	}
+
+	/**
+	 * Add an external sub-select to the query.
+	 */
+	protected whereInExistingQuery(column: Column, query: QueryBuilder, bool: WhereBoolean, not: boolean): QueryBuilder {
+		const type = not ? 'NotInSub' : 'InSub'
+
+		this.wheres.push({ type, column, query, bool })
+		this.addBinding(query.getBindings(), 'where')
+
+		return this
+	}
+
+	/**
+	 * Add a "where in raw" clause for integer values to the query.
+	 */
+	whereIntegerInRaw(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = not ? 'NotInRaw' : 'InRaw'
+
+		if (values instanceof Array) {
+			// values = values.toArray();
+		}
+
+		values = values.map(value => {
+			return Number(value)
+		})
+
+		this.wheres.push({ type, column, values, bool })
+
+		return this
+	}
+
+	/**
+	 * Add a "where not in raw" clause for integer values to the query.
+	 */
+	whereIntegerNotInRaw(column: Column, values: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+		return this.whereIntegerInRaw(column, values, bool, true)
+	}
+
+	/**
+	 * Add a "where null" clause to the query.
+	 */
+	whereNull(column: Column, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = not ? 'NotNull' : 'Null'
+		this.wheres.push({ type, column, bool })
+
+		return this
+	}
+	/**
+	 * Add an "or where null" clause to the query.
+	 */
+	orWhereNull(column: Column): QueryBuilder {
+		return this.whereNull(column, 'OR')
+	}
+
+	/**
+	 * Add a "where not null" clause to the query.
+	 */
+	whereNotNull(column: Column, bool: WhereBoolean = 'AND'): QueryBuilder {
+		return this.whereNull(column, bool, true)
+	}
+
+	/**
+	 * Add a where between statement to the query.
+	 */
+	whereBetween(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = 'between'
+
+		this.wheres.push({ type, column, values, bool, not })
+		this.addBinding(this.cleanBindings(values), 'where')
+
+		return this
+	}
+
+	/**
+	 * Add an or where between statement to the query.
+	 */
+	orWhereBetween(column: Column, values: any[]): QueryBuilder {
+		return this.whereBetween(column, values, 'OR')
+	}
+
+	/**
+	 * Add a where not between statement to the query.
+	 */
+	whereNotBetween(column: Column, values: any[], bool: WhereBoolean = 'AND'): QueryBuilder {
+		return this.whereBetween(column, values, bool, true)
+	}
+
+	/**
+	 * Add an or where not between statement to the query.
+	 */
+	orWhereNotBetween(column: Column, values: any[]): QueryBuilder {
+		return this.whereNotBetween(column, values, 'OR')
+	}
+	/**
+	 * Add an "or where not null" clause to the query.
+	 *
+	 * @param  string  $column
+	 * @return \Illuminate\Database\Query\Builder|static
+	 */
+	orWhereNotNull(column: Column): QueryBuilder {
+		return this.whereNotNull(column, 'OR')
+	}
+
+	/**
+	 * Add a nested where statement to the query.
+	 */
+	whereNested(callback: QueryFn, bool: WhereBoolean = 'AND'): QueryBuilder {
+		const query = this.forNestedWhere()
+
+		callback(query)
+
+		return this.addNestedWhereQuery(query, bool)
+	}
+
+	/**
+	 * Create a new query instance for nested where condition.
+	 */
+	forNestedWhere(): QueryBuilder {
+		return this.newQuery().from(this.fromTable)
+	}
+
+	/**
+	 * Add another query builder as a nested where to the query builder.
+	 */
+	addNestedWhereQuery(query: QueryBuilder, bool: WhereBoolean = 'AND'): QueryBuilder {
+		if (query.wheres.length) {
+			const type = 'Nested'
+			this.wheres.push({ type, query, bool })
+			this.addBinding(query.getRawBindings().where, 'where')
+		}
+
+		return this
+	}
+
+	/**
+	 * Add a full sub-select to the query.
+	 */
+	protected whereSub(column: Column, operator: string, callback: QueryFn, bool: WhereBoolean): QueryBuilder {
+		const type = 'Sub'
+		// Once we have the query instance we can simply execute it so it can add all
+		// of the sub-select's conditions to itself, and then we can cache it off
+		// in the array of where clauses for the "main" parent query instance.
+		const query = this.forSubQuery()
+
+		callback(query)
+
+		this.wheres.push({ type, column, operator, query, bool })
+		this.addBinding(query.getBindings(), 'where')
 
 		return this
 	}
@@ -562,6 +888,13 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Get the raw array of bindings.
+	 */
+	getRawBindings(): Bindings {
+		return this.bindings
+	}
+
+	/**
 	 * Add a binding to the query.
 	 */
 	addBinding(value: any, type: BindingType = 'where'): QueryBuilder {
@@ -588,6 +921,25 @@ export class QueryBuilder {
 		return bindings.filter(binding => {
 			return !(binding instanceof Expression)
 		})
+	}
+
+	/**
+	 * Get the database connection instance.
+	 */
+	getConnection(): Connection {
+		return this.connection
+	}
+	/**
+	 * Get the database query processor instance.
+	 */
+	getProcessor(): QueryProcessor {
+		return this.processor
+	}
+	/**
+	 * Get the query grammar instance.
+	 */
+	getGrammar(): QueryGrammar {
+		return this.grammar
 	}
 
 	/**
