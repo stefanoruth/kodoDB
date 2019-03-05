@@ -21,7 +21,12 @@ export class BaseGrammar {
 			return this.getValue(value)
 		}
 
-		if (value.toString().indexOf(' as ') > -1) {
+		if (
+			value
+				.toString()
+				.toLowerCase()
+				.indexOf(' as ') > -1
+		) {
 			return this.wrapAliasedValue(value.toString(), prefixAlias)
 		}
 
@@ -37,7 +42,7 @@ export class BaseGrammar {
 			segments[1] = this.tablePrefix + segments[1]
 		}
 
-		return this.wrap(segments[0]) + ' as ' + this.wrapValue(segments[1])
+		return this.wrap(segments[0]) + ' AS ' + this.wrapValue(segments[1])
 	}
 
 	wrapSegments(segments: any[]): string {

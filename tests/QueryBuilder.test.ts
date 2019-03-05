@@ -61,13 +61,13 @@ describe('QueryBuilder', () => {
 	test('aliasWrappingAsWholeConstant', () => {
 		const builder = getBuilder()
 		builder.select('x.y as foo.bar').from('baz')
-		expect(builder.toSql()).toBe('SELECT "x"."y" as "foo.bar" FROM "baz"')
+		expect(builder.toSql()).toBe('SELECT "x"."y" AS "foo.bar" FROM "baz"')
 	})
 
 	test('aliasWrappingWithSpacesInDatabaseName', () => {
 		const builder = getBuilder()
 		builder.select('w x.y.z as foo.bar').from('baz')
-		expect(builder.toSql()).toBe('SELECT "w x"."y"."z" as "foo.bar" FROM "baz"')
+		expect(builder.toSql()).toBe('SELECT "w x"."y"."z" AS "foo.bar" FROM "baz"')
 	})
 
 	test('addingSelects', () => {
@@ -99,14 +99,14 @@ describe('QueryBuilder', () => {
 	test('basicAlias', () => {
 		const builder = getBuilder()
 		builder.select('foo as bar').from('users')
-		expect(builder.toSql()).toBe('SELECT "foo" as "bar" FROM "users"')
+		expect(builder.toSql()).toBe('SELECT "foo" AS "bar" FROM "users"')
 	})
 
 	test('aliasWithPrefix', () => {
 		const builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder.select('*').from('users as people')
-		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" as "prefix_people"')
+		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" AS "prefix_people"')
 	})
 
 	test('joinAliasesWithPrefix', () => {
@@ -116,8 +116,9 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('services')
 			.join('translations AS t', 't.item_id', '=', 'services.id')
+
 		expect(builder.toSql()).toBe(
-			'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
+			'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" AS "prefix_t" ON "prefix_t"."item_id" = "prefix_services"."id"'
 		)
 	})
 
@@ -153,7 +154,7 @@ describe('QueryBuilder', () => {
 
 	test('whenCallbackWithReturn', () => {
 		let builder
-		const callback = (query: any, condition: any) => {
+		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeTruthy()
 			return query.where('id', '=', 1)
 		}
@@ -176,21 +177,30 @@ describe('QueryBuilder', () => {
 	})
 
 	test('whenCallbackWithDefault', () => {
-		// $callback = function ($query, $condition) {
-		//     $this -> assertEquals($condition, 'truthy');
-		//     $query -> where('id', '=', 1);
-		// };
-		// $default = function ($query, $condition) {
-		//     $this -> assertEquals($condition, 0);
-		//     $query -> where('id', '=', 2);
-		// };
-		// $builder = $this -> getBuilder();
-		// $builder -> select('*') -> from('users') -> when('truthy', $callback, $default) -> where('email', 'foo');
-		// $this -> assertEquals('select * from "users" where "id" = ? and "email" = ?', $builder -> toSql());
-		// $this -> assertEquals([0 => 1, 1 => 'foo'], $builder -> getBindings());
-		// $builder = $this -> getBuilder();
-		// $builder -> select('*') -> from('users') -> when(0, $callback, $default) -> where('email', 'foo');
-		// $this -> assertEquals('select * from "users" where "id" = ? and "email" = ?', $builder -> toSql());
-		// $this -> assertEquals([0 => 2, 1 => 'foo'], $builder -> getBindings());
+		let builder
+		const callback = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeTruthy()
+			query.where('id', '=', 1)
+		}
+		const defaultValue = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeFalsy()
+			query.where('id', '=', 2)
+		}
+
+		builder = getBuilder()
+			.select('*')
+			.from('users')
+			.when('truthy', callback, defaultValue)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+
+		builder = getBuilder()
+			.select('*')
+			.from('users')
+			.when(0, callback, defaultValue)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+		expect(builder.getBindings()).toEqual([2, 'foo'])
 	})
 })

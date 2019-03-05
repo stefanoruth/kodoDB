@@ -1,9 +1,8 @@
-import { QueryBuilder } from '../QueryBuilder'
+import { QueryBuilder, JoinClause } from '../QueryBuilder'
 import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
 import { ucfirst, Collection } from '../../Utils'
 import { Bindings } from '../Bindings'
-import { JoinClause } from '../JoinClause'
 import { WhereClause } from '../WhereClause'
 
 export class QueryGrammar extends BaseGrammar {
@@ -68,6 +67,9 @@ export class QueryGrammar extends BaseGrammar {
 		return ''
 	}
 
+	/**
+	 * Compile the "select *" portion of the query.
+	 */
 	protected compileColumns(query: QueryBuilder, columns: any[]): string | void {
 		// If the query is actually performing an aggregating select, we will let that
 		// compiler handle the building of the select clauses, as it will need some
@@ -81,13 +83,25 @@ export class QueryGrammar extends BaseGrammar {
 		return select + this.columnize(columns)
 	}
 
+	/**
+	 * Compile the "from" portion of the query.
+	 */
 	protected compileFromTable(query: QueryBuilder, table: string): string {
-		// return ''
 		return 'FROM ' + this.wrapTable(table)
 	}
 
-	protected compileJoins(query: QueryBuilder, joins: any[]): string {
-		return ''
+	/**
+	 * Compile the "join" portions of the query.
+	 */
+	protected compileJoins(query: QueryBuilder, joins: JoinClause[]): string {
+		return new Collection(joins)
+			.map((join: JoinClause) => {
+				const table = this.wrapTable(join.table)
+				const nestedJoins = join.joins.length > 0 ? ' ' + this.compileJoins(query, join.joins) : ' '
+				const tableAndNestedJoins = join.joins.length > 0 ? `${table}.${nestedJoins}` : table
+				return `${join.type} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
+			})
+			.join(' ')
 	}
 
 	/**
@@ -118,6 +132,10 @@ export class QueryGrammar extends BaseGrammar {
 	protected compileWheresToArray(query: QueryBuilder): any[] {
 		return new Collection(query.wheres)
 			.map(where => {
+				if (typeof (this as any)['where' + where.type] !== 'function') {
+					throw new Error(`Method is missing: ${'where' + where.type}`)
+				}
+
 				return where.bool + ' ' + (this as any)['where' + where.type](query, where)
 			})
 			.all()
@@ -214,6 +232,13 @@ export class QueryGrammar extends BaseGrammar {
 		return this.wrap(where.column!) + ' IS NOT NULL'
 	}
 
+	/**
+	 * Compile a where clause comparing two columns..
+	 */
+	protected whereColumn(query: QueryBuilder, where: WhereClause): string {
+		return `${this.wrap(where.first)} ${where.operator} ${this.wrap(where.second)}`
+	}
+
 	// Compile a union aggregate query into SQL.
 	protected compileUnionAggregate(query: QueryBuilder): string {
 		const sql = this.compileAggregate(query, query.aggregate)
@@ -305,7 +330,12 @@ export class QueryGrammar extends BaseGrammar {
 			return this.getValue(value)
 		}
 
-		if (value.toString().indexOf(' as ') !== -1) {
+		if (
+			value
+				.toString()
+				.toLowerCase()
+				.indexOf(' as ') !== -1
+		) {
 			return this.wrapAliasedValue(value.toString(), prefixAlias)
 		}
 

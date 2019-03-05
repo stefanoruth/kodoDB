@@ -7,7 +7,6 @@ import { Expression } from './Expression'
 import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
-// import { JoinClause } from './JoinClause'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
 
@@ -68,7 +67,7 @@ export class QueryBuilder {
 	/**
 	 * The table joins for the query.
 	 */
-	joins: string[] = []
+	joins: JoinClause[] = []
 
 	/**
 	 * The where constraints for the query.
@@ -217,7 +216,7 @@ export class QueryBuilder {
 		first: string, // | () => void,
 		operator?: string,
 		second?: string,
-		type: string = 'inner',
+		type: string = 'INNER',
 		where: boolean = false
 	): QueryBuilder {
 		const join = this.newJoinClause(this, type, table)
