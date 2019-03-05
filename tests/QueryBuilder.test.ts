@@ -87,39 +87,39 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users"')
 	})
 
-	// test('basicSelectDistinct', () => {
-	// 	const builder = getBuilder()
-	// 	builder
-	// 		.distinct()
-	// 		.select('foo', 'bar')
-	// 		.from('users')
-	// 	expect(builder.toSql()).toBe('SELECT DISTINCT "foo", "bar" FROM "users"')
-	// })
+	test('basicSelectDistinct', () => {
+		const builder = getBuilder()
+		builder
+			.distinct()
+			.select('foo', 'bar')
+			.from('users')
+		expect(builder.toSql()).toBe('SELECT DISTINCT "foo", "bar" FROM "users"')
+	})
 
-	// test('basicAlias', () => {
-	// 	const builder = getBuilder()
-	// 	builder.select('foo as bar').from('users')
-	// 	expect(builder.toSql()).toBe('SELECT "foo" as "bar" FROM "users"')
-	// })
+	test('basicAlias', () => {
+		const builder = getBuilder()
+		builder.select('foo as bar').from('users')
+		expect(builder.toSql()).toBe('SELECT "foo" as "bar" FROM "users"')
+	})
 
-	// test('aliasWithPrefix', () => {
-	// 	const builder = getBuilder()
-	// 	builder.getGrammar().setTablePrefix('prefix_')
-	// 	builder.select('*').from('users as people')
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" as "prefix_people"')
-	// })
+	test('aliasWithPrefix', () => {
+		const builder = getBuilder()
+		builder.getGrammar().setTablePrefix('prefix_')
+		builder.select('*').from('users as people')
+		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" as "prefix_people"')
+	})
 
-	// test('joinAliasesWithPrefix', () => {
-	// 	const builder = getBuilder()
-	// 	builder.getGrammar().setTablePrefix('prefix_')
-	// 	builder
-	// 		.select('*')
-	// 		.from('services')
-	// 		.join('translations AS t', 't.item_id', '=', 'services.id')
-	// 	expect(builder.toSql()).toBe(
-	// 		'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
-	// 	)
-	// })
+	test('joinAliasesWithPrefix', () => {
+		const builder = getBuilder()
+		builder.getGrammar().setTablePrefix('prefix_')
+		builder
+			.select('*')
+			.from('services')
+			.join('translations AS t', 't.item_id', '=', 'services.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "prefix_services" INNER JOIN "prefix_translations" as "prefix_t" on "prefix_t"."item_id" = "prefix_services"."id"'
+		)
+	})
 
 	test('basicTableWrapping', () => {
 		const builder = getBuilder()
