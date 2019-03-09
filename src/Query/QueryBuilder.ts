@@ -339,11 +339,17 @@ export class QueryBuilder {
 	/**
 	 * Add a "where" clause comparing two columns to the query.
 	 */
-	whereColumn(first: string | string[], operator: any, second?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereColumn(
+		first: string | string[] | string[][],
+		operator?: any,
+		second?: any,
+		bool: WhereBoolean = 'AND'
+	): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
 		if (first instanceof Array) {
+			console.log(first)
 			return this.addArrayOfWheres(first, bool, 'whereColumn')
 		}
 		// If the given operator is not found in the list of valid operators we will
@@ -373,7 +379,7 @@ export class QueryBuilder {
 	 * Add a raw where clause to the query.
 	 */
 	whereRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
-		this.wheres.push({ type: 'raw', sql, bool })
+		this.wheres.push({ type: 'Raw', sql, bool })
 		this.addBinding(bindings, 'where')
 
 		return this

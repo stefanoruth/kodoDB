@@ -132,11 +132,13 @@ export class QueryGrammar extends BaseGrammar {
 	protected compileWheresToArray(query: QueryBuilder): any[] {
 		return new Collection(query.wheres)
 			.map(where => {
-				if (typeof (this as any)['where' + where.type] !== 'function') {
-					throw new Error(`Method is missing: ${'where' + where.type}`)
+				const method = 'where' + Str.ucfirst(where.type)
+
+				if (typeof (this as any)[method] !== 'function') {
+					throw new Error(`Method is missing: ${method}`)
 				}
 
-				return where.bool + ' ' + (this as any)['where' + where.type](query, where)
+				return where.bool + ' ' + (this as any)[method](query, where)
 			})
 			.all()
 	}

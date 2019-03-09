@@ -17,28 +17,35 @@ function getBuilder() {
 	return Mock.from<QueryBuilder>(new QueryBuilder(connection, grammar, processor))
 }
 
+function assertEquals(result: any, response: any) {
+	expect(response).toEqual(result)
+}
+
+let builder: QueryBuilder
+
+beforeEach(() => {
+	builder = getBuilder()
+})
+
 describe('QueryBuilder', () => {
 	test('basicSelect', () => {
-		const builder = getBuilder()
 		builder.select('*').from('users')
 		expect(builder.toSql()).toBe('SELECT * FROM "users"')
 	})
 
 	test('basicSelectWithGetColumns', () => {
-		const builder = getBuilder()
-
 		// expect(builder.getProcessor().processSelect).toBeCalled()
 		// expect(builder.getConnection().select).toBeCalledTimes(1)
 
 		//         builder-> getProcessor().shouldReceive('processSelect');
 		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     this.assertEquals('select * from "users"', sql);
+		//     assertEquals('select * from "users"', sql);
 		// });
 		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     this.assertEquals('select "foo", "bar" from "users"', sql);
+		//     assertEquals('select "foo", "bar" from "users"', sql);
 		// });
 		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     this.assertEquals('select "baz" from "users"', sql);
+		//     assertEquals('select "baz" from "users"', sql);
 		// });
 		builder.from('users').get()
 		expect(builder.columns).toEqual([])
@@ -54,25 +61,21 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicTableWrappingProtectsQuotationMarks', () => {
-		const builder = getBuilder()
 		builder.select('*').from('some"table')
 		expect(builder.toSql()).toBe('SELECT * FROM "some""table"')
 	})
 
 	test('aliasWrappingAsWholeConstant', () => {
-		const builder = getBuilder()
 		builder.select('x.y as foo.bar').from('baz')
 		expect(builder.toSql()).toBe('SELECT "x"."y" AS "foo.bar" FROM "baz"')
 	})
 
 	test('aliasWrappingWithSpacesInDatabaseName', () => {
-		const builder = getBuilder()
 		builder.select('w x.y.z as foo.bar').from('baz')
 		expect(builder.toSql()).toBe('SELECT "w x"."y"."z" AS "foo.bar" FROM "baz"')
 	})
 
 	test('addingSelects', () => {
-		const builder = getBuilder()
 		builder
 			.select('foo')
 			.addSelect('bar')
@@ -82,14 +85,12 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicSelectWithPrefix', () => {
-		const builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder.select('*').from('users')
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users"')
 	})
 
 	test('basicSelectDistinct', () => {
-		const builder = getBuilder()
 		builder
 			.distinct()
 			.select('foo', 'bar')
@@ -98,20 +99,17 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicAlias', () => {
-		const builder = getBuilder()
 		builder.select('foo as bar').from('users')
 		expect(builder.toSql()).toBe('SELECT "foo" AS "bar" FROM "users"')
 	})
 
 	test('aliasWithPrefix', () => {
-		const builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder.select('*').from('users as people')
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" AS "prefix_people"')
 	})
 
 	test('joinAliasesWithPrefix', () => {
-		const builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder
 			.select('*')
@@ -124,13 +122,11 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicTableWrapping', () => {
-		const builder = getBuilder()
 		builder.select('*').from('public.users')
 		expect(builder.toSql()).toBe('SELECT * FROM "public"."users"')
 	})
 
 	test('whenCallback', () => {
-		let builder
 		const callback = (query: any, condition: boolean) => {
 			expect(condition).toBeTruthy()
 			query.where('id', '=', 1)
@@ -154,7 +150,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('whenCallbackWithReturn', () => {
-		let builder
 		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeTruthy()
 			return query.where('id', '=', 1)
@@ -178,7 +173,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('whenCallbackWithDefault', () => {
-		let builder
 		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeTruthy()
 			query.where('id', '=', 1)
@@ -206,7 +200,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('unlessCallback', () => {
-		let builder
 		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeFalsy()
 			query.where('id', '=', 1)
@@ -230,7 +223,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('unlessCallbackWithReturn', () => {
-		let builder
 		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeFalsy()
 			return query.where('id', '=', 1)
@@ -254,7 +246,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('unlessCallbackWithDefault', () => {
-		let builder
 		const callback = (query: QueryBuilder, condition: any) => {
 			expect(condition).toBeFalsy()
 			query.where('id', '=', 1)
@@ -287,7 +278,7 @@ describe('QueryBuilder', () => {
 		const callback = (query: QueryBuilder) => {
 			return query.where('id', '=', 1)
 		}
-		const builder = getBuilder()
+
 		builder
 			.select('*')
 			.from('users')
@@ -297,7 +288,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicWheres', () => {
-		const builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -307,7 +297,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('dateBasedWheresExpressionIsNotBound', () => {
-		const builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -317,8 +306,6 @@ describe('QueryBuilder', () => {
 	})
 
 	test('whereBetweens', () => {
-		let builder
-
 		builder = getBuilder()
 		builder
 			.select('*')
@@ -343,4 +330,201 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" BETWEEN 1 AND 2')
 		expect(builder.getBindings()).toEqual([])
 	})
+
+	// test('BasicOrWheres', () => {
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhere('email', '=', 'foo')
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "email" = ?')
+	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
+	// })
+
+	// test('RawWheres', () => {
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereRaw('id = ? or email = ?', [1, 'foo'])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE id = ? or email = ?')
+	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
+	// })
+
+	// test('RawOrWheres', () => {
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereRaw('email = ?', ['foo'])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR email = ?')
+	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
+	// })
+
+	// test('BasicWhereIns', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIn('id', [1, 2, 3])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IN (?, ?, ?)')
+	// 	expect(builder.getBindings()).toEqual([1, 2, 3])
+
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereIn('id', [1, 2, 3])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (?, ?, ?)')
+	// 	expect(builder.getBindings()).toEqual([1, 1, 2, 3])
+	// })
+
+	// test('BasicWhereNotIns', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereNotIn('id', [1, 2, 3])
+	// 	assertEquals('select * from "users" where "id" not in (?, ?, ?)', builder.toSql())
+	// 	assertEquals([1, 2, 3], builder.getBindings())
+
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereNotIn('id', [1, 2, 3])
+	// 	assertEquals('select * from "users" where "id" = ? or "id" not in (?, ?, ?)', builder.toSql())
+	// 	assertEquals([1, 1, 2, 3], builder.getBindings())
+	// })
+
+	// test('RawWhereIns', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIn('id', [new Expression(1)])
+	// 	assertEquals('select * from "users" where "id" in (1)', builder.toSql())
+
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereIn('id', [new Expression(1)])
+	// 	assertEquals('select * from "users" where "id" = ? or "id" in (1)', builder.toSql())
+	// 	assertEquals([1], builder.getBindings())
+	// })
+
+	// test('EmptyWhereIns', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIn('id', [])
+	// 	assertEquals('select * from "users" where 0 = 1', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereIn('id', [])
+	// 	assertEquals('select * from "users" where "id" = ? or 0 = 1', builder.toSql())
+	// 	assertEquals([1], builder.getBindings())
+	// })
+
+	// test('EmptyWhereNotIns', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereNotIn('id', [])
+	// 	assertEquals('select * from "users" where 1 = 1', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereNotIn('id', [])
+	// 	assertEquals('select * from "users" where "id" = ? or 1 = 1', builder.toSql())
+	// 	assertEquals([1], builder.getBindings())
+	// })
+
+	// test('WhereIntegerInRaw', () => {
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIntegerInRaw('id', ['1a', 2])
+	// 	assertEquals('select * from "users" where "id" in (1, 2)', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+	// })
+
+	// test('WhereIntegerNotInRaw', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIntegerNotInRaw('id', ['1a', 2])
+	// 	assertEquals('select * from "users" where "id" not in (1, 2)', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+	// })
+
+	// test('EmptyWhereIntegerInRaw', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIntegerInRaw('id', [])
+	// 	assertEquals('select * from "users" where 0 = 1', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+	// })
+
+	// test('EmptyWhereIntegerNotInRaw', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereIntegerNotInRaw('id', [])
+	// 	assertEquals('select * from "users" where 1 = 1', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+	// })
+
+	// test('BasicWhereColumn', () => {
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereColumn('first_name', 'last_name')
+	// 		.orWhereColumn('first_name', 'middle_name')
+	// 	assertEquals(
+	// 		'select * from "users" where "first_name" = "last_name" or "first_name" = "middle_name"',
+	// 		builder.toSql()
+	// 	)
+	// 	assertEquals([], builder.getBindings())
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereColumn('updated_at', '>', 'created_at')
+	// 	assertEquals('select * from "users" where "updated_at" > "created_at"', builder.toSql())
+	// 	assertEquals([], builder.getBindings())
+	// })
+
+	// test('ArrayWhereColumn', () => {
+	// 	const conditions = [['first_name', 'last_name'], ['updated_at', '>', 'created_at']]
+	// 	builder = getBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereColumn(conditions)
+	// 	assertEquals(
+	// 		'select * from "users" where ("first_name" = "last_name" and "updated_at" > "created_at")',
+	// 		builder.toSql()
+	// 	)
+	// 	assertEquals([], builder.getBindings())
+	// })
 })

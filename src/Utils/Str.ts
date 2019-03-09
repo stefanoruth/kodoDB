@@ -1,4 +1,4 @@
-import _ from 'lodash'
+import { startCase } from 'lodash'
 
 export class Str {
 	static ucfirst(value: string | undefined): string {
@@ -16,6 +16,6 @@ export class Str {
 	}
 
 	static studly(value: string): string {
-		return _.startCase(value).replace(new RegExp(/\s/gi), '')
+		return startCase(value).replace(new RegExp(/\s/gi), '')
 	}
 }
