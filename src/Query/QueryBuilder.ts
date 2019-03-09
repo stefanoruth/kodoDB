@@ -7,6 +7,7 @@ import { Expression } from './Expression'
 import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
+import { Operators } from './Operators'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
 
@@ -97,37 +98,7 @@ export class QueryBuilder {
 	/**
 	 * All of the available clause operators.
 	 */
-	operators = [
-		'=',
-		'<',
-		'>',
-		'<=',
-		'>=',
-		'<>',
-		'!=',
-		'<=>',
-		'like',
-		'like binary',
-		'not like',
-		'ilike',
-		'&',
-		'|',
-		'^',
-		'<<',
-		'>>',
-		'rlike',
-		'regexp',
-		'not regexp',
-		'~',
-		'~*',
-		'!~',
-		'!~*',
-		'similar to',
-		'not similar to',
-		'not ilike',
-		'~~*',
-		'!~~*',
-	]
+	operators: string[] = Operators
 
 	/**
 	 * Create a new query builder instance.
@@ -543,6 +514,38 @@ export class QueryBuilder {
 	 */
 	whereNotNull(column: Column, bool: WhereBoolean = 'AND'): QueryBuilder {
 		return this.whereNull(column, bool, true)
+	}
+
+	/**
+	 * Add a "where date" statement to the query.
+	 */
+	whereDate(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		if (value instanceof Date) {
+			value = value.toDateString()
+		}
+
+		return this.addDateBasedWhere('Date', column, operator, value, bool)
+	}
+
+	/**
+	 * Add a date based (year, month, day, time) statement to the query.
+	 */
+	protected addDateBasedWhere(
+		type: string,
+		column: Column,
+		operator: string,
+		value?: any,
+		bool: WhereBoolean = 'AND'
+	): QueryBuilder {
+		this.wheres.push({ column, type, bool, operator, values: value })
+
+		if (!(value instanceof Expression)) {
+			this.addBinding(value, 'where')
+		}
+
+		return this
 	}
 
 	/**
@@ -976,8 +979,31 @@ export class QueryBuilder {
 		value: T,
 		callback: (query: QueryBuilder, condition: T) => QueryBuilder | void,
 		defaultValue?: (query: QueryBuilder, condition: T) => QueryBuilder | void
-	) {
+	): QueryBuilder {
 		if (value) {
+			return callback(this, value) || this
+		} else if (defaultValue) {
+			return defaultValue(this, value) || this
+		}
+		return this
+	}
+
+	/**
+	 * Pass the query to a given callback.
+	 */
+	tap(callback: (query: QueryBuilder, condition: boolean) => QueryBuilder) {
+		return this.when(true, callback)
+	}
+
+	/**
+	 * Apply the callback's query changes if the given "value" is false.
+	 */
+	unless<T>(
+		value: T,
+		callback: (query: QueryBuilder, condition: T) => QueryBuilder | void,
+		defaultValue?: (query: QueryBuilder, condition: T) => QueryBuilder | void
+	): QueryBuilder {
+		if (!value) {
 			return callback(this, value) || this
 		} else if (defaultValue) {
 			return defaultValue(this, value) || this

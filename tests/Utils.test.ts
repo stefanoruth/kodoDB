@@ -1,13 +1,12 @@
-import { studly } from '../src/Utils/String'
-import { tap, dateFormat } from '../src/Utils'
+import { tap, dateFormat, Str } from '../src/Utils'
 
 describe('Utils', () => {
-	describe('String', () => {
+	describe('Str', () => {
 		test('Studly case', () => {
-			expect(studly('laravel_p_h_p_framework')).toBe('LaravelPHPFramework')
-			expect(studly('laravel_php_framework')).toBe('LaravelPhpFramework')
-			expect(studly('laravel-phP-framework')).toBe('LaravelPhPFramework')
-			expect(studly('laravel  -_-  php   -_-   framework   ')).toBe('LaravelPhpFramework')
+			expect(Str.studly('laravel_p_h_p_framework')).toBe('LaravelPHPFramework')
+			expect(Str.studly('laravel_php_framework')).toBe('LaravelPhpFramework')
+			expect(Str.studly('laravel-phP-framework')).toBe('LaravelPhPFramework')
+			expect(Str.studly('laravel  -_-  php   -_-   framework   ')).toBe('LaravelPhpFramework')
 		})
 	})
 

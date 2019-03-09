@@ -3,7 +3,7 @@ import { SchemaGrammar } from './Grammars/SchemaGrammar'
 import { SchemaBuilder } from './SchemaBuilder'
 import { ColumnDefinition, ColumnBuilder } from './ColumnDefinition'
 import { SchemaCommand } from './SchemaCommand'
-import { tap, ucfirst, lcfirst } from '../Utils'
+import { tap, Str } from '../Utils'
 
 export class Blueprint {
 	protected table: string
@@ -41,7 +41,7 @@ export class Blueprint {
 		this.ensureCommandsAreValid(connection)
 
 		this.commands.forEach(command => {
-			const method = 'compile' + ucfirst(command.name)
+			const method = 'compile' + Str.ucfirst(command.name)
 			if ((grammar as any)[method]) {
 				const sql = (grammar as any)[method](this, command, connection)
 
@@ -108,7 +108,7 @@ export class Blueprint {
 	addFluentCommands(grammar: SchemaGrammar) {
 		this.columns.forEach((column: ColumnDefinition) => {
 			grammar.getFluentCommands().forEach((command: SchemaCommand) => {
-				const attributeName: string = lcfirst(command.name)
+				const attributeName: string = Str.lcfirst(command.name)
 
 				if (!(column as any)[attributeName]) {
 					return

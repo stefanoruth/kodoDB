@@ -2,7 +2,7 @@ import { BaseGrammar } from '../../BaseGrammar'
 import { Blueprint } from '../Blueprint'
 import { Expression } from '../../Query/Expression'
 import { ColumnDefinition } from '../ColumnDefinition'
-import { ucfirst } from '../../Utils'
+import { Str } from '../../Utils'
 import { ChangeColumn } from './ChangeColumn'
 import { Connection } from '../../Connections/Connection'
 import { RenameColumn } from './RenameColumn'
@@ -92,7 +92,7 @@ export class SchemaGrammar extends BaseGrammar {
 	 * Get the SQL for the column data type.
 	 */
 	protected getType(column: ColumnDefinition): string {
-		return (this as any)['type' + ucfirst((column as any).type)](column)
+		return (this as any)['type' + Str.ucfirst((column as any).type)](column)
 	}
 
 	/**
@@ -155,7 +155,7 @@ export class SchemaGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap(value: string | Expression | ColumnDefinition, prefixAlias: boolean = false) {
+	wrap(value: string | string[] | Expression | ColumnDefinition, prefixAlias: boolean = false) {
 		return super.wrap(value instanceof ColumnDefinition ? (value as any).name : value, prefixAlias)
 	}
 

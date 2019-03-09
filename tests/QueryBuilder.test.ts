@@ -3,6 +3,7 @@ import { QueryGrammar } from '../src/Query/Grammars/QueryGrammar'
 import { QueryProcessor } from '../src/Query/Processors/QueryProcessor'
 import { Mock } from 'ts-mockery'
 import { Connection } from '../src/Connections/Connection'
+import { Expression } from '../src/Query/Expression'
 
 function getBuilder() {
 	const grammar = new QueryGrammar()
@@ -29,15 +30,15 @@ describe('QueryBuilder', () => {
 		// expect(builder.getProcessor().processSelect).toBeCalled()
 		// expect(builder.getConnection().select).toBeCalledTimes(1)
 
-		//         $builder-> getProcessor() -> shouldReceive('processSelect');
-		// $builder -> getConnection() -> shouldReceive('select') -> once() -> andReturnUsing(function ($sql) {
-		//     $this -> assertEquals('select * from "users"', $sql);
+		//         $builder-> getProcessor().shouldReceive('processSelect');
+		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
+		//     $this.assertEquals('select * from "users"', $sql);
 		// });
-		// $builder -> getConnection() -> shouldReceive('select') -> once() -> andReturnUsing(function ($sql) {
-		//     $this -> assertEquals('select "foo", "bar" from "users"', $sql);
+		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
+		//     $this.assertEquals('select "foo", "bar" from "users"', $sql);
 		// });
-		// $builder -> getConnection() -> shouldReceive('select') -> once() -> andReturnUsing(function ($sql) {
-		//     $this -> assertEquals('select "baz" from "users"', $sql);
+		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
+		//     $this.assertEquals('select "baz" from "users"', $sql);
 		// });
 		builder.from('users').get()
 		expect(builder.columns).toEqual([])
@@ -202,5 +203,116 @@ describe('QueryBuilder', () => {
 			.where('email', 'foo')
 		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
 		expect(builder.getBindings()).toEqual([2, 'foo'])
+	})
+
+	test('unlessCallback', () => {
+		let builder
+		const callback = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeFalsy()
+			query.where('id', '=', 1)
+		}
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless(false, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless(true, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "email" = ?')
+	})
+
+	test('unlessCallbackWithReturn', () => {
+		let builder
+		const callback = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeFalsy()
+			return query.where('id', '=', 1)
+		}
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless(false, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless(true, callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "email" = ?')
+	})
+
+	test('unlessCallbackWithDefault', () => {
+		let builder
+		const callback = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeFalsy()
+			query.where('id', '=', 1)
+		}
+		const defaultValue = (query: QueryBuilder, condition: any) => {
+			expect(condition).toBeTruthy()
+			query.where('id', '=', 2)
+		}
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless(0, callback, defaultValue)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.unless('truthy', callback, defaultValue)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+		expect(builder.getBindings()).toEqual([2, 'foo'])
+	})
+
+	test('tapCallback', () => {
+		const callback = (query: QueryBuilder) => {
+			return query.where('id', '=', 1)
+		}
+		const builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.tap(callback)
+			.where('email', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? AND "email" = ?')
+	})
+
+	test('basicWheres', () => {
+		const builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ?')
+		expect(builder.getBindings()).toEqual([1])
+	})
+
+	test('dateBasedWheresExpressionIsNotBound', () => {
+		const builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereDate('created_at', new Expression('NOW()'))
+			.where('admin', true)
+		expect(builder.getBindings()).toEqual([true])
 	})
 })

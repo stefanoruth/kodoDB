@@ -1,4 +1,4 @@
-import { studly, dateFormat } from '../Utils'
+import { Str, dateFormat } from '../Utils'
 import * as fs from 'fs'
 
 type tableEvent = (table: string) => any
@@ -71,7 +71,7 @@ export class MigrationCreator {
 	}
 
 	protected getClassName(name: string): string {
-		return studly(name)
+		return Str.studly(name)
 	}
 
 	protected getPath(name: string, path: string): string {

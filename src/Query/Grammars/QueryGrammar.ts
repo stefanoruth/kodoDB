@@ -1,7 +1,7 @@
 import { QueryBuilder, JoinClause } from '../QueryBuilder'
 import { Expression } from '../Expression'
 import { BaseGrammar } from '../../BaseGrammar'
-import { ucfirst, Collection } from '../../Utils'
+import { Str, Collection } from '../../Utils'
 import { Bindings } from '../Bindings'
 import { WhereClause } from '../WhereClause'
 
@@ -53,7 +53,7 @@ export class QueryGrammar extends BaseGrammar {
 			// see if that component exists. If it does we'll just call the compiler
 			// function for the component which is responsible for making the SQL.
 			if ((query as any)[component]) {
-				const method = 'compile' + ucfirst(component)
+				const method = 'compile' + Str.ucfirst(component)
 				if (typeof (this as any)[method] === 'function') {
 					sql[component] = (this as any)[method](query, (query as any)[component])
 				}
