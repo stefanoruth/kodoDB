@@ -331,72 +331,72 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual([])
 	})
 
-	// test('BasicOrWheres', () => {
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhere('email', '=', 'foo')
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "email" = ?')
-	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
-	// })
+	test('BasicOrWheres', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhere('email', '=', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "email" = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+	})
 
-	// test('RawWheres', () => {
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereRaw('id = ? or email = ?', [1, 'foo'])
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE id = ? or email = ?')
-	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
-	// })
+	test('RawWheres', () => {
+		builder
+			.select('*')
+			.from('users')
+			.whereRaw('id = ? or email = ?', [1, 'foo'])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE id = ? or email = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+	})
 
-	// test('RawOrWheres', () => {
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereRaw('email = ?', ['foo'])
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR email = ?')
-	// 	expect(builder.getBindings()).toEqual([1, 'foo'])
-	// })
+	test('RawOrWheres', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereRaw('email = ?', ['foo'])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR email = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+	})
 
-	// test('BasicWhereIns', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIn('id', [1, 2, 3])
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IN (?, ?, ?)')
-	// 	expect(builder.getBindings()).toEqual([1, 2, 3])
+	test('BasicWhereIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIn('id', [1, 2, 3])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IN (?, ?, ?)')
+		expect(builder.getBindings()).toEqual([1, 2, 3])
 
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereIn('id', [1, 2, 3])
-	// 	expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (?, ?, ?)')
-	// 	expect(builder.getBindings()).toEqual([1, 1, 2, 3])
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereIn('id', [1, 2, 3])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (?, ?, ?)')
+		expect(builder.getBindings()).toEqual([1, 1, 2, 3])
+	})
 
-	// test('BasicWhereNotIns', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereNotIn('id', [1, 2, 3])
-	// 	assertEquals('select * from "users" where "id" not in (?, ?, ?)', builder.toSql())
-	// 	assertEquals([1, 2, 3], builder.getBindings())
+	test('BasicWhereNotIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNotIn('id', [1, 2, 3])
+		assertEquals('SELECT * FROM "users" WHERE "id" NOT IN (?, ?, ?)', builder.toSql())
+		assertEquals([1, 2, 3], builder.getBindings())
 
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereNotIn('id', [1, 2, 3])
-	// 	assertEquals('select * from "users" where "id" = ? or "id" not in (?, ?, ?)', builder.toSql())
-	// 	assertEquals([1, 1, 2, 3], builder.getBindings())
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereNotIn('id', [1, 2, 3])
+		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR "id" NOT IN (?, ?, ?)', builder.toSql())
+		assertEquals([1, 1, 2, 3], builder.getBindings())
+	})
 
 	// test('RawWhereIns', () => {
 	// 	builder = getBuilder()
@@ -404,7 +404,7 @@ describe('QueryBuilder', () => {
 	// 		.select('*')
 	// 		.from('users')
 	// 		.whereIn('id', [new Expression(1)])
-	// 	assertEquals('select * from "users" where "id" in (1)', builder.toSql())
+	// 	assertEquals('SELECT * FROM "users" WHERE "id" IN (1)', builder.toSql())
 
 	// 	builder = getBuilder()
 	// 	builder
@@ -412,119 +412,120 @@ describe('QueryBuilder', () => {
 	// 		.from('users')
 	// 		.where('id', '=', 1)
 	// 		.orWhereIn('id', [new Expression(1)])
-	// 	assertEquals('select * from "users" where "id" = ? or "id" in (1)', builder.toSql())
+	// 	assertEquals('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (1)', builder.toSql())
 	// 	assertEquals([1], builder.getBindings())
 	// })
 
-	// test('EmptyWhereIns', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIn('id', [])
-	// 	assertEquals('select * from "users" where 0 = 1', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
+	test('EmptyWhereIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIn('id', [])
+		assertEquals('SELECT * FROM "users" WHERE 0 = 1', builder.toSql())
+		assertEquals([], builder.getBindings())
 
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereIn('id', [])
-	// 	assertEquals('select * from "users" where "id" = ? or 0 = 1', builder.toSql())
-	// 	assertEquals([1], builder.getBindings())
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereIn('id', [])
+		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR 0 = 1', builder.toSql())
+		assertEquals([1], builder.getBindings())
+	})
 
-	// test('EmptyWhereNotIns', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereNotIn('id', [])
-	// 	assertEquals('select * from "users" where 1 = 1', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
+	test('EmptyWhereNotIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNotIn('id', [])
+		assertEquals('SELECT * FROM "users" WHERE 1 = 1', builder.toSql())
+		assertEquals([], builder.getBindings())
 
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereNotIn('id', [])
-	// 	assertEquals('select * from "users" where "id" = ? or 1 = 1', builder.toSql())
-	// 	assertEquals([1], builder.getBindings())
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereNotIn('id', [])
+		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR 1 = 1', builder.toSql())
+		assertEquals([1], builder.getBindings())
+	})
 
-	// test('WhereIntegerInRaw', () => {
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIntegerInRaw('id', ['1a', 2])
-	// 	assertEquals('select * from "users" where "id" in (1, 2)', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
-	// })
+	test('WhereIntegerInRaw', () => {
+		builder
+			.select('*')
+			.from('users')
+			.whereIntegerInRaw('id', ['1a', 2])
+		// assertEquals('SELECT * FROM "users" WHERE "id" IN (1, 2)', builder.toSql())
+		assertEquals([], builder.getBindings())
+	})
 
-	// test('WhereIntegerNotInRaw', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIntegerNotInRaw('id', ['1a', 2])
-	// 	assertEquals('select * from "users" where "id" not in (1, 2)', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
-	// })
+	test('WhereIntegerNotInRaw', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIntegerNotInRaw('id', ['1a', 2])
+		// assertEquals('SELECT * FROM "users" WHERE "id" NOT IN (1, 2)', builder.toSql())
+		assertEquals([], builder.getBindings())
+	})
 
-	// test('EmptyWhereIntegerInRaw', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIntegerInRaw('id', [])
-	// 	assertEquals('select * from "users" where 0 = 1', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
-	// })
+	test('EmptyWhereIntegerInRaw', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIntegerInRaw('id', [])
+		// assertEquals('SELECT * FROM "users" WHERE 0 = 1', builder.toSql())
+		assertEquals([], builder.getBindings())
+	})
 
-	// test('EmptyWhereIntegerNotInRaw', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIntegerNotInRaw('id', [])
-	// 	assertEquals('select * from "users" where 1 = 1', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
-	// })
+	test('EmptyWhereIntegerNotInRaw', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIntegerNotInRaw('id', [])
+		assertEquals('SELECT * FROM "users" WHERE 1 = 1', builder.toSql())
+		assertEquals([], builder.getBindings())
+	})
 
-	// test('BasicWhereColumn', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereColumn('first_name', 'last_name')
-	// 		.orWhereColumn('first_name', 'middle_name')
-	// 	assertEquals(
-	// 		'select * from "users" where "first_name" = "last_name" or "first_name" = "middle_name"',
-	// 		builder.toSql()
-	// 	)
-	// 	assertEquals([], builder.getBindings())
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereColumn('updated_at', '>', 'created_at')
-	// 	assertEquals('select * from "users" where "updated_at" > "created_at"', builder.toSql())
-	// 	assertEquals([], builder.getBindings())
-	// })
+	test('BasicWhereColumn', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereColumn('first_name', 'last_name')
+			.orWhereColumn('first_name', 'middle_name')
+		// assertEquals(
+		// 	'SELECT * FROM "users" WHERE "first_name" = "last_name" OR "first_name" = "middle_name"',
+		// 	builder.toSql()
+		// )
+		assertEquals([], builder.getBindings())
 
-	// test('ArrayWhereColumn', () => {
-	// 	const conditions = [['first_name', 'last_name'], ['updated_at', '>', 'created_at']]
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereColumn(conditions)
-	// 	assertEquals(
-	// 		'select * from "users" where ("first_name" = "last_name" and "updated_at" > "created_at")',
-	// 		builder.toSql()
-	// 	)
-	// 	assertEquals([], builder.getBindings())
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereColumn('updated_at', '>', 'created_at')
+		// assertEquals('SELECT * FROM "users" WHERE "updated_at" > "created_at"', builder.toSql())
+		assertEquals([], builder.getBindings())
+	})
+
+	test('ArrayWhereColumn', () => {
+		const conditions = [['first_name', 'last_name'], ['updated_at', '>', 'created_at']]
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereColumn(conditions)
+		// assertEquals(
+		// 	'SELECT * FROM "users" WHERE ("first_name" = "last_name" AND "updated_at" > "created_at")',
+		// 	builder.toSql()
+		// )
+		assertEquals([], builder.getBindings())
+	})
 })
