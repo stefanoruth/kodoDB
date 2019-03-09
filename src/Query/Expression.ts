@@ -1,7 +1,7 @@
 export class Expression {
-	protected value: string
+	protected value: string | number
 
-	constructor(value: string | Expression) {
+	constructor(value: string | number | Expression) {
 		if (value instanceof Expression) {
 			this.value = value.getValue()
 		} else {

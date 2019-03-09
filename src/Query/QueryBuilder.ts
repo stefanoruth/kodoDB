@@ -552,7 +552,7 @@ export class QueryBuilder {
 	 * Add a where between statement to the query.
 	 */
 	whereBetween(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
-		const type = 'between'
+		const type = 'Between'
 
 		this.wheres.push({ type, column, values, bool, not })
 		this.addBinding(this.cleanBindings(values), 'where')

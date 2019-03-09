@@ -233,6 +233,17 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile a "between" where clause.
+	 */
+	protected whereBetween(query: QueryBuilder, where: WhereClause): string {
+		const between = where.not ? 'NOT BETWEEN' : 'BETWEEN'
+		const min = this.parameter(where.values[0])
+		const max = this.parameter(where.values[where.values.length - 1])
+
+		return `${this.wrap(where.column!)} ${between} ${min} AND ${max}`
+	}
+
+	/**
 	 * Compile a where clause comparing two columns..
 	 */
 	protected whereColumn(query: QueryBuilder, where: WhereClause): string {

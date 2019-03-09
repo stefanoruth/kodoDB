@@ -30,15 +30,15 @@ describe('QueryBuilder', () => {
 		// expect(builder.getProcessor().processSelect).toBeCalled()
 		// expect(builder.getConnection().select).toBeCalledTimes(1)
 
-		//         $builder-> getProcessor().shouldReceive('processSelect');
-		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
-		//     $this.assertEquals('select * from "users"', $sql);
+		//         builder-> getProcessor().shouldReceive('processSelect');
+		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
+		//     this.assertEquals('select * from "users"', sql);
 		// });
-		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
-		//     $this.assertEquals('select "foo", "bar" from "users"', $sql);
+		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
+		//     this.assertEquals('select "foo", "bar" from "users"', sql);
 		// });
-		// $builder.getConnection().shouldReceive('select').once().andReturnUsing(function ($sql) {
-		//     $this.assertEquals('select "baz" from "users"', $sql);
+		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
+		//     this.assertEquals('select "baz" from "users"', sql);
 		// });
 		builder.from('users').get()
 		expect(builder.columns).toEqual([])
@@ -314,5 +314,33 @@ describe('QueryBuilder', () => {
 			.whereDate('created_at', new Expression('NOW()'))
 			.where('admin', true)
 		expect(builder.getBindings()).toEqual([true])
+	})
+
+	test('whereBetweens', () => {
+		let builder
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereBetween('id', [1, 2])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" BETWEEN ? AND ?')
+		expect(builder.getBindings()).toEqual([1, 2])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNotBetween('id', [1, 2])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" NOT BETWEEN ? AND ?')
+		expect(builder.getBindings()).toEqual([1, 2])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereBetween('id', [new Expression(1), new Expression(2)])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" BETWEEN 1 AND 2')
+		expect(builder.getBindings()).toEqual([])
 	})
 })
