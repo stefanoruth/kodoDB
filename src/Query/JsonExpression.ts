@@ -1,6 +1,6 @@
 import { Expression } from './Expression'
 
-function getJsonBindingParameter(value: any): string {
+function getJsonBindingParameter(value: any): string | number {
 	if (value instanceof Expression) {
 		return value.getValue()
 	}
