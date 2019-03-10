@@ -8,7 +8,7 @@ export class BaseGrammar {
 		return values.map(value => this.wrap(value))
 	}
 
-	wrapTable(table: string | Expression): string {
+	wrapTable(table: string | Expression): string | number {
 		if (!(table instanceof Expression)) {
 			return this.wrap(this.tablePrefix + table, true)
 		}
@@ -16,7 +16,7 @@ export class BaseGrammar {
 		return this.getValue(table)
 	}
 
-	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string {
+	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string | number {
 		if (value instanceof Expression) {
 			return this.getValue(value)
 		}
@@ -66,11 +66,15 @@ export class BaseGrammar {
 	}
 
 	parameterize(values: any[]): string {
-		return values.map(this.parameter).join(', ')
+		return values.map(value => this.parameter(value)).join(', ')
 	}
 
-	parameter(value: any): string {
-		return value instanceof Expression ? this.getValue(value) : '?'
+	parameter(value: any): string | number {
+		if (value instanceof Expression) {
+			return this.getValue(value)
+		}
+
+		return '?'
 	}
 
 	quoteString(value: string | string[] | undefined): string {
@@ -85,7 +89,7 @@ export class BaseGrammar {
 		return `'${value}'`
 	}
 
-	getValue(expression: Expression): string {
+	getValue(expression: Expression): string | number {
 		return expression.getValue()
 	}
 

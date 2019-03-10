@@ -6,8 +6,14 @@ import { Bindings } from '../Bindings'
 import { WhereClause } from '../WhereClause'
 
 export class QueryGrammar extends BaseGrammar {
+	/**
+	 * The grammar specific operators.
+	 */
 	protected operators = []
 
+	/**
+	 * The components that make up a select clause.
+	 */
 	protected selectComponents = [
 		'aggregate',
 		'columns',
@@ -23,7 +29,9 @@ export class QueryGrammar extends BaseGrammar {
 		'lock',
 	]
 
-	// Compile a select query into SQL.
+	/**
+	 * Compile a select query into SQL.
+	 */
 	compileSelect(query: QueryBuilder): string {
 		if (query.unions && query.aggregate) {
 			return this.compileUnionAggregate(query)
@@ -44,7 +52,9 @@ export class QueryGrammar extends BaseGrammar {
 		return sql
 	}
 
-	// Compile the components necessary for a select clause.
+	/**
+	 * Compile the components necessary for a select clause.
+	 */
 	protected compileComponents(query: QueryBuilder): any[] {
 		const sql: any = {}
 
@@ -63,6 +73,9 @@ export class QueryGrammar extends BaseGrammar {
 		return sql
 	}
 
+	/**
+	 * Compile an aggregated select clause.
+	 */
 	compileAggregate(query: QueryBuilder, aggregate: any): string {
 		return ''
 	}
@@ -212,12 +225,23 @@ export class QueryGrammar extends BaseGrammar {
 		return `${this.wrap(where.column!)} IN (${this.compileSelect(where.query)})`
 	}
 
+	/**
+	 * Compile a where not in sub-select clause.
+	 */
 	protected whereNotInSub(query: QueryBuilder, where: WhereClause): string {
-		return ''
+		return `${this.wrap(where.column!)} NOT IN (${this.compileSelect(where.query)})`
 	}
 
+	/**
+	 * Compile a "where in raw" clause.
+	 *
+	 * For safety, whereIntegerInRaw ensures this method is only used with integer values.
+	 */
 	protected whereInRaw(query: QueryBuilder, where: WhereClause): string {
-		return ''
+		if (where.values instanceof Array && where.values.length > 0) {
+			return `${this.wrap(where.column!)} IN (${where.values.join(', ')})`
+		}
+		return '0 = 1'
 	}
 
 	/**
@@ -252,7 +276,21 @@ export class QueryGrammar extends BaseGrammar {
 		return `${this.wrap(where.first)} ${where.operator} ${this.wrap(where.second)}`
 	}
 
-	// Compile a union aggregate query into SQL.
+	/**
+	 * Compile a nested where clause.
+	 */
+	protected whereNested(query: QueryBuilder, where: WhereClause): string {
+		// Here we will calculate what portion of the string we need to remove. If this
+		// is a join clause query, we need to remove the "on" portion of the SQL and
+		// if it is a normal query we need to take the leading "where" of queries.
+		const offset = query instanceof JoinClause ? 3 : 6
+
+		return `(${this.compileWheres(where.query).substr(offset)})`
+	}
+
+	/**
+	 * Compile a union aggregate query into SQL.
+	 */
 	protected compileUnionAggregate(query: QueryBuilder): string {
 		const sql = this.compileAggregate(query, query.aggregate)
 
@@ -338,7 +376,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string {
+	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string | number {
 		if (value instanceof Expression) {
 			return this.getValue(value)
 		}
@@ -373,7 +411,9 @@ export class QueryGrammar extends BaseGrammar {
 		return value.indexOf('->') > -1
 	}
 
-	// Concatenate an array of segments, removing empties.
+	/**
+	 * Concatenate an array of segments, removing empties.
+	 */
 	protected concatenate(segments: any): string {
 		let result = ''
 

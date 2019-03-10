@@ -385,8 +385,9 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereNotIn('id', [1, 2, 3])
-		assertEquals('SELECT * FROM "users" WHERE "id" NOT IN (?, ?, ?)', builder.toSql())
-		assertEquals([1, 2, 3], builder.getBindings())
+
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" NOT IN (?, ?, ?)')
+		expect(builder.getBindings()).toEqual([1, 2, 3])
 
 		builder = getBuilder()
 		builder
@@ -394,27 +395,28 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.where('id', '=', 1)
 			.orWhereNotIn('id', [1, 2, 3])
-		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR "id" NOT IN (?, ?, ?)', builder.toSql())
-		assertEquals([1, 1, 2, 3], builder.getBindings())
+
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" NOT IN (?, ?, ?)')
+		expect(builder.getBindings()).toEqual([1, 1, 2, 3])
 	})
 
-	// test('RawWhereIns', () => {
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.whereIn('id', [new Expression(1)])
-	// 	assertEquals('SELECT * FROM "users" WHERE "id" IN (1)', builder.toSql())
+	test('RawWhereIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIn('id', [new Expression(1)])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IN (1)')
 
-	// 	builder = getBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('id', '=', 1)
-	// 		.orWhereIn('id', [new Expression(1)])
-	// 	assertEquals('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (1)', builder.toSql())
-	// 	assertEquals([1], builder.getBindings())
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereIn('id', [new Expression(1)])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" IN (1)')
+		expect(builder.getBindings()).toEqual([1])
+	})
 
 	test('EmptyWhereIns', () => {
 		builder = getBuilder()
@@ -422,8 +424,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereIn('id', [])
-		assertEquals('SELECT * FROM "users" WHERE 0 = 1', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE 0 = 1')
+		expect(builder.getBindings()).toEqual([])
 
 		builder = getBuilder()
 		builder
@@ -431,8 +433,8 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.where('id', '=', 1)
 			.orWhereIn('id', [])
-		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR 0 = 1', builder.toSql())
-		assertEquals([1], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR 0 = 1')
+		expect(builder.getBindings()).toEqual([1])
 	})
 
 	test('EmptyWhereNotIns', () => {
@@ -441,8 +443,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereNotIn('id', [])
-		assertEquals('SELECT * FROM "users" WHERE 1 = 1', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE 1 = 1')
+		expect(builder.getBindings()).toEqual([])
 
 		builder = getBuilder()
 		builder
@@ -450,8 +452,8 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.where('id', '=', 1)
 			.orWhereNotIn('id', [])
-		assertEquals('SELECT * FROM "users" WHERE "id" = ? OR 1 = 1', builder.toSql())
-		assertEquals([1], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR 1 = 1')
+		expect(builder.getBindings()).toEqual([1])
 	})
 
 	test('WhereIntegerInRaw', () => {
@@ -459,8 +461,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereIntegerInRaw('id', ['1a', 2])
-		// assertEquals('SELECT * FROM "users" WHERE "id" IN (1, 2)', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IN (1, 2)')
+		expect(builder.getBindings()).toEqual([])
 	})
 
 	test('WhereIntegerNotInRaw', () => {
@@ -469,8 +471,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereIntegerNotInRaw('id', ['1a', 2])
-		// assertEquals('SELECT * FROM "users" WHERE "id" NOT IN (1, 2)', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" NOT IN (1, 2)')
+		expect(builder.getBindings()).toEqual([])
 	})
 
 	test('EmptyWhereIntegerInRaw', () => {
@@ -479,8 +481,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereIntegerInRaw('id', [])
-		// assertEquals('SELECT * FROM "users" WHERE 0 = 1', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE 0 = 1')
+		expect(builder.getBindings()).toEqual([])
 	})
 
 	test('EmptyWhereIntegerNotInRaw', () => {
@@ -489,8 +491,8 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereIntegerNotInRaw('id', [])
-		assertEquals('SELECT * FROM "users" WHERE 1 = 1', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE 1 = 1')
+		expect(builder.getBindings()).toEqual([])
 	})
 
 	test('BasicWhereColumn', () => {
@@ -500,19 +502,18 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.whereColumn('first_name', 'last_name')
 			.orWhereColumn('first_name', 'middle_name')
-		// assertEquals(
-		// 	'SELECT * FROM "users" WHERE "first_name" = "last_name" OR "first_name" = "middle_name"',
-		// 	builder.toSql()
-		// )
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "first_name" = "last_name" OR "first_name" = "middle_name"'
+		)
+		expect(builder.getBindings()).toEqual([])
 
 		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
 			.whereColumn('updated_at', '>', 'created_at')
-		// assertEquals('SELECT * FROM "users" WHERE "updated_at" > "created_at"', builder.toSql())
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "updated_at" > "created_at"')
+		expect(builder.getBindings()).toEqual([])
 	})
 
 	test('ArrayWhereColumn', () => {
@@ -522,10 +523,9 @@ describe('QueryBuilder', () => {
 			.select('*')
 			.from('users')
 			.whereColumn(conditions)
-		// assertEquals(
-		// 	'SELECT * FROM "users" WHERE ("first_name" = "last_name" AND "updated_at" > "created_at")',
-		// 	builder.toSql()
-		// )
-		assertEquals([], builder.getBindings())
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE ("first_name" = "last_name" AND "updated_at" > "created_at")'
+		)
+		expect(builder.getBindings()).toEqual([])
 	})
 })

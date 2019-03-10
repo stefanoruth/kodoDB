@@ -321,10 +321,9 @@ export class QueryBuilder {
 	 * Determine if the given operator is supported.
 	 */
 	protected invalidOperator(operator: string): boolean {
-		return (
-			this.operators.indexOf(operator.toLowerCase()) !== -1 &&
-			this.grammar.getOperators().indexOf(operator.toLowerCase()) !== -1
-		)
+		operator = operator.toLowerCase()
+
+		return this.operators.indexOf(operator) === -1 && this.grammar.getOperators().indexOf(operator) === -1
 	}
 
 	/**
@@ -349,7 +348,6 @@ export class QueryBuilder {
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
 		if (first instanceof Array) {
-			console.log(first)
 			return this.addArrayOfWheres(first, bool, 'whereColumn')
 		}
 		// If the given operator is not found in the list of valid operators we will
@@ -371,7 +369,7 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where" clause comparing two columns to the query.
 	 */
-	orWhereColumn(first: string | string[], operator?: any, second?: string): QueryBuilder {
+	orWhereColumn(first: string | string[] | string[][], operator?: any, second?: any): QueryBuilder {
 		return this.whereColumn(first, operator, second, 'OR')
 	}
 
@@ -479,12 +477,8 @@ export class QueryBuilder {
 	whereIntegerInRaw(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
 		const type = not ? 'NotInRaw' : 'InRaw'
 
-		if (values instanceof Array) {
-			// values = values.toArray();
-		}
-
 		values = values.map(value => {
-			return Number(value)
+			return parseInt(value, 10)
 		})
 
 		this.wheres.push({ type, column, values, bool })
