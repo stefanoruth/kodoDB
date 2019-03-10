@@ -23,8 +23,8 @@ export class QueryGrammar extends BaseGrammar {
 		'groups',
 		'havings',
 		'orders',
-		'limit',
-		'offset',
+		'limitRecords',
+		'offsetRecords',
 		'unions',
 		'lock',
 	]
@@ -77,7 +77,15 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile an aggregated select clause.
 	 */
 	compileAggregate(query: QueryBuilder, aggregate: any): string {
-		return ''
+		let column = this.columnize(aggregate.columns)
+		// If the query has a "distinct" constraint and we're not asking for all columns
+		// we need to prepend "distinct" onto the column name so that the query takes
+		// it into account when it performs the aggregating operations on the data.
+		if (query.distinct && column !== '*') {
+			column = 'DISTINCT ' + column
+		}
+
+		return `SELECT ${aggregate.function}(${column}) AS AGGREGATE`
 	}
 
 	/**
@@ -286,6 +294,83 @@ export class QueryGrammar extends BaseGrammar {
 		const offset = query instanceof JoinClause ? 3 : 6
 
 		return `(${this.compileWheres(where.query).substr(offset)})`
+	}
+
+	/**
+	 * Compile the "order by" portions of the query.
+	 */
+	protected compileOrders(query: QueryBuilder, orders: any[]): string {
+		if (orders.length > 0) {
+			return 'ORDER BY ' + this.compileOrdersToArray(query, orders).join(', ')
+		}
+		return ''
+	}
+
+	/**
+	 * Compile the query orders to an array.
+	 */
+	protected compileOrdersToArray(query: QueryBuilder, orders: any[]): any[] {
+		return orders.map(order => {
+			if (order.sql) {
+				return order.sql
+			}
+
+			return `${this.wrap(order.column)} ${order.direction}`
+		})
+	}
+
+	/**
+	 * Compile the random statement into SQL.
+	 */
+	compileRandom(seed: string): string {
+		return 'RANDOM()'
+	}
+
+	/**
+	 * Compile the "limit" portions of the query.
+	 */
+	protected compileLimit(query: QueryBuilder, limit: number): string {
+		return 'LIMIT ' + limit
+	}
+
+	/**
+	 * Compile the "offset" portions of the query.
+	 */
+	protected compileOffset(query: QueryBuilder, offset: number): string {
+		return 'OFFSET ' + offset
+	}
+
+	/**
+	 * Compile the "union" queries attached to the main query.
+	 */
+	protected compileUnions(query: QueryBuilder): string {
+		const sql: string[] = []
+		query.unions.forEach(union => {
+			sql.push(this.compileUnion(union))
+		})
+		if (query.unionOrders) {
+			sql.push(this.compileOrders(query, query.unionOrders))
+		}
+		if (query.unionLimit) {
+			sql.push(this.compileLimit(query, query.unionLimit))
+		}
+		if (query.unionOffset) {
+			sql.push(this.compileOffset(query, query.unionOffset))
+		}
+		return sql
+			.map((path: string) => path.trimLeft())
+			.filter((path: string) => path.length > 0)
+			.join(' ')
+			.trimLeft()
+	}
+
+	/**
+	 * Compile a single union statement.
+	 */
+	protected compileUnion(union: any): string {
+		const conjunction = union.all ? ' UNION ALL ' : ' UNION '
+
+		return conjunction + union.query.toSql()
 	}
 
 	/**

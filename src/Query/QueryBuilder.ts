@@ -8,8 +8,10 @@ import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
 import { Operators } from './Operators'
+import { QueryAggregate, QueryOrder, QueryUnionOrder } from './QueryComponents'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
+type JoinFn = (join: JoinClause) => void
 
 export type Column = string | string[]
 type ColumnFn = () => void
@@ -48,7 +50,7 @@ export class QueryBuilder {
 	/**
 	 * An aggregate function and column to be run.
 	 */
-	aggregate?: { functionName: string; columns: string[] }
+	aggregate?: QueryAggregate
 
 	/**
 	 * The columns that should be returned.
@@ -81,19 +83,49 @@ export class QueryBuilder {
 	groups: any[] = []
 
 	/**
+	 * The having constraints for the query.
+	 */
+	havings: any[] = []
+
+	/**
 	 * The orderings for the query.
 	 */
-	orders: Array<{ column: string; direction: string }> = []
+	orders: QueryOrder[] = []
+
+	/**
+	 * The maximum number of records to return.
+	 */
+	limitRecords?: number
+
+	/**
+	 * The number of records to skip.
+	 */
+	offsetRecords?: number
 
 	/**
 	 * The query union statements.
 	 */
-	unions: string[] = []
+	unions: Array<{ query: QueryBuilder; all: boolean }> = []
+
+	/**
+	 * The maximum number of union records to return.
+	 */
+	unionLimit?: number
+
+	/**
+	 * The number of union records to skip.
+	 */
+	unionOffset?: number
 
 	/**
 	 * The orderings for the union query.
 	 */
-	unionOrders: Array<{ column: string; direction: string }> = []
+	unionOrders: QueryUnionOrder[] = []
+
+	/**
+	 * Indicates whether row locking is being used.
+	 */
+	lock: boolean | string = false
 
 	/**
 	 * All of the available clause operators.
@@ -137,7 +169,7 @@ export class QueryBuilder {
 	/**
 	 * Parse the subquery into SQL and bindings.
 	 *
-	 * @param  mixed  $query
+	 * @param  mixed  query
 	 * @return array
 	 */
 	protected parseSub(query: QueryBuilder | EloquentBuilder | string): [string, any[]] {
@@ -184,7 +216,7 @@ export class QueryBuilder {
 	 */
 	join(
 		table: string,
-		first: string, // | () => void,
+		first: string | JoinFn,
 		operator?: string,
 		second?: string,
 		type: string = 'INNER',
@@ -195,8 +227,8 @@ export class QueryBuilder {
 		// is trying to build a join with a complex "on" clause containing more than
 		// one condition, so we'll add the join and call a Closure with the query.
 		if (typeof first === 'function') {
-			// first(join)
-			// this.joins.push(join)
+			first(join)
+			this.joins.push(join)
 			this.addBinding(join.getBindings(), 'join')
 		}
 		// If the column is simply a string, we can assume the join simply has a basic
@@ -580,11 +612,9 @@ export class QueryBuilder {
 	orWhereNotBetween(column: Column, values: any[]): QueryBuilder {
 		return this.whereNotBetween(column, values, 'OR')
 	}
+
 	/**
 	 * Add an "or where not null" clause to the query.
-	 *
-	 * @param  string  $column
-	 * @return \Illuminate\Database\Query\Builder|static
 	 */
 	orWhereNotNull(column: Column): QueryBuilder {
 		return this.whereNotNull(column, 'OR')
@@ -658,11 +688,72 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a descending "order by" clause to the query.
+	 */
+	orderByDesc(column: string): QueryBuilder {
+		return this.orderBy(column, 'desc')
+	}
+
+	/**
+	 * Add an "order by" clause for a timestamp to the query.
+	 */
+	latest(column: string = 'created_at'): QueryBuilder {
+		return this.orderBy(column, 'desc')
+	}
+
+	/**
+	 * Add an "order by" clause for a timestamp to the query.
+	 */
+	oldest(column: string = 'created_at'): QueryBuilder {
+		return this.orderBy(column, 'asc')
+	}
+
+	/**
+	 * Put the query's results in random order.
+	 */
+	inRandomOrder(seed: string = ''): QueryBuilder {
+		return this.orderByRaw(this.grammar.compileRandom(seed))
+	}
+	/**
+	 * Add a raw "order by" clause to the query.
+	 */
+	orderByRaw(sql: string, bindings: any[] = []): QueryBuilder {
+		const type = 'Raw'
+
+		if (this.unions) {
+			this.unionOrders.push({ type, sql })
+		} else {
+			this.orders.push({ type, sql })
+		}
+
+		this.addBinding(bindings, 'order')
+		return this
+	}
+
+	/**
+	 * Alias to set the "offset" value of the query.
+	 */
+	skip(value: number): QueryBuilder {
+		return this.offset(value)
+	}
+
+	/**
+	 * Set the "offset" value of the query.
+	 */
+	offset(value: number): QueryBuilder {
+		const property: string = this.unions ? 'unionOffset' : 'offsetRecords'
+		;(this as any)[property] = Math.max(0, value)
+
+		return this
+	}
+
+	/**
 	 * Alias to set the "limit" value of the query.
 	 */
 	take(value: number): QueryBuilder {
 		return this.limit(value)
 	}
+
 	/**
 	 * Set the "limit" value of the query.
 	 */
@@ -672,6 +763,30 @@ export class QueryBuilder {
 			;(this as any)[property] = value
 		}
 		return this
+	}
+
+	/**
+	 * Add a union statement to the query.
+	 */
+	union(query: QueryBuilder, all: boolean = false): QueryBuilder {
+		if (typeof query === 'function') {
+			const subQuery: (query: QueryBuilder) => void = query
+			query = this.newQuery()
+
+			subQuery(query)
+		}
+
+		this.unions.push({ query, all })
+		this.addBinding(query.getBindings(), 'union')
+
+		return this
+	}
+
+	/**
+	 * Add a union all statement to the query.
+	 */
+	unionAll(query: QueryBuilder): QueryBuilder {
+		return this.union(query, true)
 	}
 
 	/**
@@ -901,7 +1016,7 @@ export class QueryBuilder {
 	 */
 	addBinding(value: any, type: BindingType = 'where'): QueryBuilder {
 		if (BindingKeys.indexOf(type) === -1) {
-			throw new Error(`Invalid binding type: ${type}.`)
+			throw new Error(`Invalid binding type: {type}.`)
 		}
 
 		if (value instanceof Array) {
@@ -916,7 +1031,7 @@ export class QueryBuilder {
 	/**
 	 * Remove all of the expressions from a list of bindings.
 	 *
-	 * @param  array  $bindings
+	 * @param  array  bindings
 	 * @return array
 	 */
 	protected cleanBindings(bindings: any[]): any[] {
@@ -947,7 +1062,7 @@ export class QueryBuilder {
 	/**
 	 * Clone the query without the given properties.
 	 *
-	 * @param  array  $properties
+	 * @param  array  properties
 	 * @return static
 	 */
 	cloneWithout(properties: string[]): QueryBuilder {
@@ -961,7 +1076,7 @@ export class QueryBuilder {
 	/**
 	 * Clone the query without the given bindings.
 	 *
-	 * @param  array  $except
+	 * @param  array  except
 	 * @return static
 	 */
 	cloneWithoutBindings(except: string[]): QueryBuilder {
@@ -1044,7 +1159,7 @@ export class JoinClause extends QueryBuilder {
 	 *
 	 * On clauses can be chained, e.g.
 	 *
-	 *  $join->on('contacts.user_id', '=', 'users.id')
+	 *  join->on('contacts.user_id', '=', 'users.id')
 	 *       ->on('contacts.info_id', '=', 'info.id')
 	 *
 	 * will produce the following SQL:

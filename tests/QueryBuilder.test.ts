@@ -518,7 +518,6 @@ describe('QueryBuilder', () => {
 
 	test('ArrayWhereColumn', () => {
 		const conditions = [['first_name', 'last_name'], ['updated_at', '>', 'created_at']]
-		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -527,5 +526,142 @@ describe('QueryBuilder', () => {
 			'SELECT * FROM "users" WHERE ("first_name" = "last_name" AND "updated_at" > "created_at")'
 		)
 		expect(builder.getBindings()).toEqual([])
+	})
+
+	test('unions', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 2)
+		)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? UNION SELECT * FROM "users" WHERE "id" = ?')
+		expect(builder.getBindings()).toEqual([1, 2])
+	})
+
+	test('unionAlls', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		builder.unionAll(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 2)
+		)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? UNION ALL SELECT * FROM "users" WHERE "id" = ?')
+		expect(builder.getBindings()).toEqual([1, 2])
+	})
+
+	test('MultipleUnions', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 2)
+		)
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 3)
+		)
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "id" = ? UNION SELECT * FROM "users" WHERE "id" = ? UNION SELECT * FROM "users" WHERE "id" = ?'
+		)
+		expect(builder.getBindings()).toEqual([1, 2, 3])
+	})
+
+	test('MultipleUnionAlls', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		builder.unionAll(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 2)
+		)
+		builder.unionAll(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 3)
+		)
+
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "id" = ? UNION ALL SELECT * FROM "users" WHERE "id" = ? UNION ALL SELECT * FROM "users" WHERE "id" = ?'
+		)
+		expect(builder.getBindings()).toEqual([1, 2, 3])
+	})
+
+	test('UnionOrderBys', () => {
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('users')
+				.where('id', '=', 2)
+		)
+		builder.orderBy('id', 'desc')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "id" = ? UNION SELECT * FROM "users" WHERE "id" = ? ORDER BY "id" DESC'
+		)
+		expect(builder.getBindings()).toEqual([1, 2])
+	})
+
+	test('UnionLimitsAndOffsets', () => {
+		builder.select('*').from('users')
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('dogs')
+		)
+		builder.skip(5).take(10)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" UNION SELECT * FROM "dogs" LIMIT 10 OFFSET 5')
+	})
+
+	test('UnionWithJoin', () => {
+		builder.select('*').from('users')
+		builder.union(
+			getBuilder()
+				.select('*')
+				.from('dogs')
+				.join('breeds', (join: any) => {
+					join.on('dogs.breed_id', '=', 'breeds.id').where('breeds.is_native', '=', 1)
+				})
+		)
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" UNION SELECT * FROM "dogs" INNER JOIN "breeds" ON "dogs"."breed_id" = "breeds"."id" AND "breeds"."is_native" = ?'
+		)
+		expect(builder.getBindings()).toEqual([1])
+	})
+
+	test('SubSelectWhereIns', () => {
+		// $builder = $this -> getBuilder();
+		// $builder -> select('*') -> from('users') -> whereIn('id', function ($q) {
+		//     $q -> select('id') -> from('users') -> where('age', '>', 25) -> take(3);
+		// });
+		// $this -> assertEquals('select * from "users" where "id" in (select "id" from "users" where "age" > ? limit 3)', $builder -> toSql());
+		// $this -> assertEquals([25], $builder -> getBindings());
+		// $builder = $this -> getBuilder();
+		// $builder -> select('*') -> from('users') -> whereNotIn('id', function ($q) {
+		//     $q -> select('id') -> from('users') -> where('age', '>', 25) -> take(3);
+		// });
+		// $this -> assertEquals('select * from "users" where "id" not in (select "id" from "users" where "age" > ? limit 3)', $builder -> toSql());
+		// $this -> assertEquals([25], $builder -> getBindings());
 	})
 })
