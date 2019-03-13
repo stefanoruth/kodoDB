@@ -4,6 +4,7 @@ import { BaseGrammar } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
 import { Bindings } from '../Bindings'
 import { WhereClause } from '../WhereClause'
+import { QueryGroup } from '../QueryComponents'
 
 export class QueryGrammar extends BaseGrammar {
 	/**
@@ -62,10 +63,17 @@ export class QueryGrammar extends BaseGrammar {
 			// To compile the query, we'll spin through each component of the query and
 			// see if that component exists. If it does we'll just call the compiler
 			// function for the component which is responsible for making the SQL.
-			if ((query as any)[component]) {
-				const method = 'compile' + Str.ucfirst(component)
+			const method = 'compile' + Str.ucfirst(component)
+			const comp = (query as any)[component]
+			const isArray = comp instanceof Array
+
+			console.log(method, comp)
+
+			if ((isArray && comp.length > 0) || (!isArray && comp)) {
 				if (typeof (this as any)[method] === 'function') {
 					sql[component] = (this as any)[method](query, (query as any)[component])
+				} else {
+					console.log(`QueryGrammar: ${method}`)
 				}
 			}
 		})
@@ -297,6 +305,60 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile the "group by" portions of the query.
+	 */
+	protected compileGroups(query: QueryBuilder, groups: QueryGroup[]): string {
+		return 'GROUP BY ' + this.columnize(groups)
+	}
+
+	// /**
+	//  * Compile the "having" portions of the query.
+	//  */
+	// protected compileHavings(query: QueryBuilder, havings: any[]): string {
+	// 	// const sql = implode(' ', array_map([$this, 'compileHaving'], havings));
+	// 	// return 'having '+this.removeLeadingBoolean(sql);
+	// 	return ''
+	// }
+
+	// /**
+	//  * Compile a single having clause.
+	//  */
+	// protected compileHaving(having: any): string {
+	// 	// If the having clause is "raw", we can just return the clause straight away
+	// 	// without doing any more processing on it. Otherwise, we will compile the
+	// 	// clause into SQL based on the components that make it up from builder.
+	// 	// if ($having['type'] === 'Raw') {
+	// 	//     return $having['boolean'].' '.$having['sql'];
+	// 	// } elseif($having['type'] === 'between') {
+	// 	//     return $this -> compileHavingBetween($having);
+	// 	// }
+	// 	// return $this -> compileBasicHaving($having);
+	// 	return ''
+	// }
+
+	// /**
+	//  * Compile a basic having clause.
+	//  */
+	// protected compileBasicHaving(having: any): string {
+	// 	// $column = $this -> wrap($having['column']);
+	// 	// $parameter = $this -> parameter($having['value']);
+	// 	// return $having['boolean'].' '.$column.' '.$having['operator'].' '.$parameter;
+	// 	return ''
+	// }
+
+	// /**
+	//  * Compile a "between" having clause.
+	//  */
+	// protected compileHavingBetween(having: any): string {
+	// 	// $between = $having['not'] ? 'not between' : 'between';
+	// 	// $column = $this -> wrap($having['column']);
+	// 	// $min = $this -> parameter(head($having['values']));
+	// 	// $max = $this -> parameter(last($having['values']));
+	// 	// return $having['boolean'].' '.$column.' '.$between.' '.$min.' and '.$max;
+	// 	return ''
+	// }
+
+	/**
 	 * Compile the "order by" portions of the query.
 	 */
 	protected compileOrders(query: QueryBuilder, orders: any[]): string {
@@ -329,7 +391,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "limit" portions of the query.
 	 */
-	protected compileLimit(query: QueryBuilder, limit: number): string {
+	protected compileLimitRecords(query: QueryBuilder, limit: number): string {
 		return 'LIMIT ' + limit
 	}
 
@@ -352,7 +414,7 @@ export class QueryGrammar extends BaseGrammar {
 			sql.push(this.compileOrders(query, query.unionOrders))
 		}
 		if (query.unionLimit) {
-			sql.push(this.compileLimit(query, query.unionLimit))
+			sql.push(this.compileLimitRecords(query, query.unionLimit))
 		}
 		if (query.unionOffset) {
 			sql.push(this.compileOffset(query, query.unionOffset))
@@ -461,8 +523,8 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap(value: string | string[] | Expression, prefixAlias: boolean = false): string | number {
-		if (value instanceof Expression) {
+	wrap = (value: string | string[] | Expression | Expression[], prefixAlias: boolean = false): string | number => {
+		if (this.isExpression(value)) {
 			return this.getValue(value)
 		}
 
