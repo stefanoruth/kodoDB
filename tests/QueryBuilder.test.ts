@@ -650,18 +650,201 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual([1])
 	})
 
-	test('SubSelectWhereIns', () => {
-		// $builder = $this -> getBuilder();
-		// $builder -> select('*') -> from('users') -> whereIn('id', function ($q) {
-		//     $q -> select('id') -> from('users') -> where('age', '>', 25) -> take(3);
-		// });
-		// $this -> assertEquals('select * from "users" where "id" in (select "id" from "users" where "age" > ? limit 3)', $builder -> toSql());
-		// $this -> assertEquals([25], $builder -> getBindings());
-		// $builder = $this -> getBuilder();
-		// $builder -> select('*') -> from('users') -> whereNotIn('id', function ($q) {
-		//     $q -> select('id') -> from('users') -> where('age', '>', 25) -> take(3);
-		// });
-		// $this -> assertEquals('select * from "users" where "id" not in (select "id" from "users" where "age" > ? limit 3)', $builder -> toSql());
-		// $this -> assertEquals([25], $builder -> getBindings());
+	test.only('SubSelectWhereIns', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereIn('id', (q: QueryBuilder) => {
+				q.select('id')
+					.from('users')
+					.where('age', '>', 25)
+					.take(3)
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "id" IN (SELECT "id" FROM "users" WHERE "age" > ? LIMIT 3)'
+		)
+		expect(builder.getBindings()).toEqual([25])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNotIn('id', (q: QueryBuilder) => {
+				q.select('id')
+					.from('users')
+					.where('age', '>', 25)
+					.take(3)
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "id" NOT IN (SELECT "id" FROM "users" WHERE "age" > ? LIMIT 3)'
+		)
+		expect(builder.getBindings()).toEqual([25])
 	})
+
+	test('BasicWhereNulls', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNull('id')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IS NULL')
+		expect(builder.getBindings()).toEqual([])
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '=', 1)
+			.orWhereNull('id')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "id" IS NULL')
+		expect(builder.getBindings()).toEqual([1])
+	})
+
+	test('BasicWhereNotNulls', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.whereNotNull('id')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" IS NOT NULL')
+		expect(builder.getBindings()).toEqual([])
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', '>', 1)
+			.orWhereNotNull('id')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" > ? OR "id" IS NOT NULL')
+		expect(builder.getBindings()).toEqual([1])
+	})
+
+	test('GroupBys', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.groupBy('email')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "email"')
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.groupBy('id', 'email')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "id", "email"')
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.groupBy(['id', 'email'])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "id", "email"')
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.groupBy(new Expression('DATE(created_at)'))
+		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY DATE(created_at)')
+	})
+
+	// test('OrderBys', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').orderBy('email').orderBy('age', 'desc');
+	//     expect(builder.toSql()).toBe('select * from "users" order by "email" asc, "age" desc')
+	//     builder.orders = null;
+	//     expect(builder.toSql()).toBe('select * from "users"')
+	//     builder.orders = [];
+	//     expect(builder.toSql()).toBe('select * from "users"')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').orderBy('email').orderByRaw('"age" ? desc', ['foo']);
+	//     expect(builder.toSql()).toBe('select * from "users" order by "email" asc, "age" ? desc')
+	//     expect(builder.getBindings()).toEqual(['foo'])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').orderByDesc('name');
+	//     expect(builder.toSql()).toBe('select * from "users" order by "name" desc')
+	// })
+
+	// test('OrderByInvalidDirectionParam', () => {
+	//     // expectException(InvalidArgumentException:: class);
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').orderBy('age', 'asec');
+	// })
+
+	// test('Havings', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').having('email', '>', 1);
+	//     expect(builder.toSql()).toBe('select * from "users" having "email" > ?')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users')
+	//         .orHaving('email', '=', 'test@example.com')
+	//         .orHaving('email', '=', 'test@example.com');
+	//     expect(builder.toSql()).toBe('select * from "users" having "email" = ? or "email" = ?')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').groupBy('email').having('email', '>', 1);
+	//     expect(builder.toSql()).toBe('select * from "users" group by "email" having "email" > ?')
+	//     builder = getBuilder();
+	//     builder.select('email as foo_email').from('users').having('foo_email', '>', 1);
+	//     expect(builder.toSql()).toBe('select "email" as "foo_email" from "users" having "foo_email" > ?')
+	//     builder = getBuilder();
+	//     builder.select(['category', new Expression('count(*) as "total"')]).from('item').where('department', '=', 'popular').groupBy('category').having('total', '>', new Expression('3'));
+	//     expect(builder.toSql()).toBe('select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > 3')
+	//     builder = getBuilder();
+	//     builder.select(['category', new Expression('count(*) as "total"')]).from('item').where('department', '=', 'popular').groupBy('category').having('total', '>', 3);
+	//     expect(builder.toSql()).toBe('select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > ?')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').havingBetween('last_login_date', ['2018-11-16', '2018-12-16']);
+	//     expect(builder.toSql()).toBe('select * from "users" having "last_login_date" between ? and ?')
+	// })
+
+	// test('HavingShortcut', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').having('email', 1).orHaving('email', 2);
+	//     expect(builder.toSql()).toBe('select * from "users" having "email" = ? or "email" = ?')
+	// })
+
+	// test('RawHavings', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').havingRaw('user_foo < user_bar');
+	//     expect(builder.toSql()).toBe('select * from "users" having user_foo < user_bar')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').having('baz', '=', 1).orHavingRaw('user_foo < user_bar');
+	//     expect(builder.toSql()).toBe('select * from "users" having "baz" = ? or user_foo < user_bar')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').havingBetween('last_login_date', ['2018-11-16', '2018-12-16']).orHavingRaw('user_foo < user_bar');
+	//     expect(builder.toSql()).toBe('select * from "users" having "last_login_date" between ? and ? or user_foo < user_bar')
+	// })
+
+	// test('LimitsAndOffsets', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').offset(5).limit(10);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 10 offset 5')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').skip(5).take(10);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 10 offset 5')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').skip(0).take(0);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').skip(-5).take(-10);
+	//     expect(builder.toSql()).toBe('select * from "users" offset 0')
+	// })
+
+	// test('ForPage', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(2, 15);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 15')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(0, 15);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 0')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(-2, 15);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 0')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(2, 0);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(0, 0);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').forPage(-2, 0);
+	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	// })
 })
