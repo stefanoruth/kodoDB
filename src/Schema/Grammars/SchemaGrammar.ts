@@ -1,4 +1,4 @@
-import { BaseGrammar } from '../../BaseGrammar'
+import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Blueprint } from '../Blueprint'
 import { Expression } from '../../Query/Expression'
 import { ColumnDefinition } from '../ColumnDefinition'
@@ -155,7 +155,7 @@ export class SchemaGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap(value: string | string[] | Expression | ColumnDefinition, prefixAlias: boolean = false) {
+	wrap(value: BaseGrammarWrap | ColumnDefinition, prefixAlias: boolean = false) {
 		return super.wrap(value instanceof ColumnDefinition ? (value as any).name : value, prefixAlias)
 	}
 

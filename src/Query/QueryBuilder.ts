@@ -2,13 +2,12 @@ import { Connection } from '../Connections/Connection'
 import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection, tap } from '../Utils'
-import { Bindings, BindingKeys, BindingType } from './Bindings'
 import { Expression } from './Expression'
-import { WhereClause, WhereBoolean } from './WhereClause'
 import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
 import { Operators } from './Operators'
-import { QueryAggregate, QueryOrder, QueryUnionOrder } from './QueryComponents'
+import { QueryObj } from './QueryObj'
+import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection } from './Components'
 
 type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
 type JoinFn = (join: JoinClause) => void
@@ -33,99 +32,9 @@ export class QueryBuilder {
 	processor: QueryProcessor
 
 	/**
-	 * The current query value bindings.
-	 *
-	 * @var array
-	 */
-	bindings: Bindings = {
-		select: [],
-		from: [],
-		join: [],
-		where: [],
-		having: [],
-		order: [],
-		union: [],
-	}
-
-	/**
 	 * An aggregate function and column to be run.
 	 */
-	aggregate?: QueryAggregate
-
-	/**
-	 * The columns that should be returned.
-	 */
-	columns: string[] = []
-
-	/**
-	 * Indicates if the query returns distinct results.
-	 */
-	distinctSelect: boolean = false
-
-	/**
-	 * The table which the query is targeting.
-	 */
-	fromTable: string = ''
-
-	/**
-	 * The table joins for the query.
-	 */
-	joins: JoinClause[] = []
-
-	/**
-	 * The where constraints for the query.
-	 */
-	wheres: WhereClause[] = []
-
-	/**
-	 * The groupings for the query.
-	 */
-	groups: any[] = []
-
-	/**
-	 * The having constraints for the query.
-	 */
-	havings: any[] = []
-
-	/**
-	 * The orderings for the query.
-	 */
-	orders: QueryOrder[] = []
-
-	/**
-	 * The maximum number of records to return.
-	 */
-	limitRecords?: number
-
-	/**
-	 * The number of records to skip.
-	 */
-	offsetRecords?: number
-
-	/**
-	 * The query union statements.
-	 */
-	unions: Array<{ query: QueryBuilder; all: boolean }> = []
-
-	/**
-	 * The maximum number of union records to return.
-	 */
-	unionLimit?: number
-
-	/**
-	 * The number of union records to skip.
-	 */
-	unionOffset?: number
-
-	/**
-	 * The orderings for the union query.
-	 */
-	unionOrders: QueryUnionOrder[] = []
-
-	/**
-	 * Indicates whether row locking is being used.
-	 */
-	lock: boolean | string = false
+	queryObj: QueryObj = new QueryObj()
 
 	/**
 	 * All of the available clause operators.
@@ -145,7 +54,7 @@ export class QueryBuilder {
 	 * Set the columns to be selected.
 	 */
 	select(column: Column = ['*'], ...columns: string[]): QueryBuilder {
-		this.columns = column instanceof Array ? column : [column, ...columns]
+		this.queryObj.columns = column instanceof Array ? column : [column, ...columns]
 
 		return this
 	}
@@ -188,7 +97,7 @@ export class QueryBuilder {
 	addSelect(column: Column, ...columns: string[]): QueryBuilder {
 		column = column instanceof Array ? column : [column, ...columns]
 
-		this.columns = this.columns.concat(column)
+		this.queryObj.columns = this.queryObj.columns.concat(column)
 
 		return this
 	}
@@ -197,7 +106,7 @@ export class QueryBuilder {
 	 * Force the query to only return distinct results.
 	 */
 	distinct(): QueryBuilder {
-		this.distinctSelect = true
+		this.queryObj.distinct = true
 
 		return this
 	}
@@ -206,7 +115,7 @@ export class QueryBuilder {
 	 * Set the table which the query is targeting.
 	 */
 	from(table: string): QueryBuilder {
-		this.fromTable = table
+		this.queryObj.from = table
 
 		return this
 	}
@@ -228,7 +137,7 @@ export class QueryBuilder {
 		// one condition, so we'll add the join and call a Closure with the query.
 		if (typeof first === 'function') {
 			first(join)
-			this.joins.push(join)
+			this.queryObj.joins.push(join.queryObj)
 			this.addBinding(join.getBindings(), 'join')
 		}
 		// If the column is simply a string, we can assume the join simply has a basic
@@ -236,7 +145,8 @@ export class QueryBuilder {
 		// this simple join clauses attached to it. There is not a join callback.
 		else {
 			const method = where ? 'where' : 'on'
-			this.joins.push((join as any)[method](first, operator, second))
+			const joinObj: JoinClause = (join as any)[method](first, operator, second)
+			this.queryObj.joins.push(joinObj.queryObj)
 			this.addBinding(join.getBindings(), 'join')
 		}
 		return this
@@ -304,7 +214,7 @@ export class QueryBuilder {
 		// in our array and add the query binding to our array of bindings that
 		// will be bound to each SQL statements when it is finally executed.
 		const type = 'Basic'
-		this.wheres.push({ type, column, operator, values: value, bool })
+		this.queryObj.wheres.push({ type, column, operator, values: value, bool })
 
 		if (!(value instanceof Expression)) {
 			this.addBinding(value, 'where')
@@ -393,7 +303,7 @@ export class QueryBuilder {
 		// once the query is about to be executed and run against the database.
 		const type = 'Column'
 
-		this.wheres.push({ type, first, operator, second, bool })
+		this.queryObj.wheres.push({ type, first, operator, second, bool })
 
 		return this
 	}
@@ -409,7 +319,7 @@ export class QueryBuilder {
 	 * Add a raw where clause to the query.
 	 */
 	whereRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
-		this.wheres.push({ type: 'Raw', sql, bool })
+		this.queryObj.wheres.push({ type: 'Raw', sql, bool })
 		this.addBinding(bindings, 'where')
 
 		return this
@@ -434,6 +344,7 @@ export class QueryBuilder {
 		if (values instanceof QueryBuilder || values instanceof EloquentBuilder || typeof values === 'function') {
 			const [query, bindings] = this.createSub(values)
 			values = [new Expression(query)]
+			// console.log(values)
 			this.addBinding(bindings, 'where')
 		}
 
@@ -444,7 +355,7 @@ export class QueryBuilder {
 			values = values.toArray()
 		}
 
-		this.wheres.push({ type, column, values, bool })
+		this.queryObj.wheres.push({ type, column, values, bool })
 
 		// Finally we'll add a binding for each values unless that value is an expression
 		// in which case we will just skip over it since it will be the query as a raw
@@ -485,7 +396,7 @@ export class QueryBuilder {
 		const query = this.forSubQuery()
 		callback(query)
 
-		this.wheres.push({ type, column, query, bool })
+		this.queryObj.wheres.push({ type, column, query: query.queryObj, bool })
 		this.addBinding(query.getBindings, 'where')
 
 		return this
@@ -497,7 +408,7 @@ export class QueryBuilder {
 	protected whereInExistingQuery(column: Column, query: QueryBuilder, bool: WhereBoolean, not: boolean): QueryBuilder {
 		const type = not ? 'NotInSub' : 'InSub'
 
-		this.wheres.push({ type, column, query, bool })
+		this.queryObj.wheres.push({ type, column, query: query.queryObj, bool })
 		this.addBinding(query.getBindings(), 'where')
 
 		return this
@@ -513,7 +424,7 @@ export class QueryBuilder {
 			return parseInt(value, 10)
 		})
 
-		this.wheres.push({ type, column, values, bool })
+		this.queryObj.wheres.push({ type, column, values, bool })
 
 		return this
 	}
@@ -530,7 +441,7 @@ export class QueryBuilder {
 	 */
 	whereNull(column: Column, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
 		const type = not ? 'NotNull' : 'Null'
-		this.wheres.push({ type, column, bool })
+		this.queryObj.wheres.push({ type, column, bool })
 
 		return this
 	}
@@ -571,7 +482,7 @@ export class QueryBuilder {
 		value?: any,
 		bool: WhereBoolean = 'AND'
 	): QueryBuilder {
-		this.wheres.push({ column, type, bool, operator, values: value })
+		this.queryObj.wheres.push({ column, type, bool, operator, values: value })
 
 		if (!(value instanceof Expression)) {
 			this.addBinding(value, 'where')
@@ -586,7 +497,7 @@ export class QueryBuilder {
 	whereBetween(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
 		const type = 'Between'
 
-		this.wheres.push({ type, column, values, bool, not })
+		this.queryObj.wheres.push({ type, column, values, bool, not })
 		this.addBinding(this.cleanBindings(values), 'where')
 
 		return this
@@ -635,16 +546,16 @@ export class QueryBuilder {
 	 * Create a new query instance for nested where condition.
 	 */
 	forNestedWhere(): QueryBuilder {
-		return this.newQuery().from(this.fromTable)
+		return this.newQuery().from(this.queryObj.from)
 	}
 
 	/**
 	 * Add another query builder as a nested where to the query builder.
 	 */
 	addNestedWhereQuery(query: QueryBuilder, bool: WhereBoolean = 'AND'): QueryBuilder {
-		if (query.wheres.length) {
+		if (query.queryObj.wheres.length) {
 			const type = 'Nested'
-			this.wheres.push({ type, query, bool })
+			this.queryObj.wheres.push({ type, query: query.queryObj, bool })
 			this.addBinding(query.getRawBindings().where, 'where')
 		}
 
@@ -663,8 +574,23 @@ export class QueryBuilder {
 
 		callback(query)
 
-		this.wheres.push({ type, column, operator, query, bool })
+		this.queryObj.wheres.push({ type, column, operator, query: query.queryObj, bool })
 		this.addBinding(query.getBindings(), 'where')
+
+		return this
+	}
+
+	/**
+	 * Add a "group by" clause to the query.
+	 */
+	groupBy(...groups: any[]): QueryBuilder {
+		if (groups.length === 1 && groups[0] instanceof Array) {
+			groups = groups[0]
+		}
+
+		groups.forEach(group => {
+			this.queryObj.groups.push(group)
+		})
 
 		return this
 	}
@@ -672,16 +598,16 @@ export class QueryBuilder {
 	/**
 	 * Add an "order by" clause to the query.
 	 */
-	orderBy(column: string, direction: string = 'asc'): QueryBuilder {
+	orderBy(column: string, direction: OrderDirection = 'asc'): QueryBuilder {
 		const order = {
 			column,
-			direction: direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC',
+			direction: direction.toUpperCase(),
 		}
 
-		if (this.unions) {
-			this.unionOrders.push(order)
+		if (this.queryObj.unions.length > 0) {
+			this.queryObj.unionOrders.push(order)
 		} else {
-			this.orders.push(order)
+			this.queryObj.orders.push(order)
 		}
 
 		return this
@@ -720,10 +646,10 @@ export class QueryBuilder {
 	orderByRaw(sql: string, bindings: any[] = []): QueryBuilder {
 		const type = 'Raw'
 
-		if (this.unions) {
-			this.unionOrders.push({ type, sql })
+		if (this.queryObj.unions.length > 0) {
+			this.queryObj.unionOrders.push({ type, sql })
 		} else {
-			this.orders.push({ type, sql })
+			this.queryObj.orders.push({ type, sql })
 		}
 
 		this.addBinding(bindings, 'order')
@@ -741,8 +667,11 @@ export class QueryBuilder {
 	 * Set the "offset" value of the query.
 	 */
 	offset(value: number): QueryBuilder {
-		const property: string = this.unions ? 'unionOffset' : 'offsetRecords'
-		;(this as any)[property] = Math.max(0, value)
+		if (this.queryObj.unions) {
+			this.queryObj.unionOffset = Math.max(0, value)
+		} else {
+			this.queryObj.offset = Math.max(0, value)
+		}
 
 		return this
 	}
@@ -758,10 +687,16 @@ export class QueryBuilder {
 	 * Set the "limit" value of the query.
 	 */
 	limit(value: number): QueryBuilder {
-		const property = this.unions ? 'unionLimit' : 'limit'
-		if (value >= 0) {
-			;(this as any)[property] = value
+		if (value < 0) {
+			return this
 		}
+
+		if (this.queryObj.unions) {
+			this.queryObj.unionLimit = value
+		} else {
+			this.queryObj.limit = value
+		}
+
 		return this
 	}
 
@@ -776,7 +711,7 @@ export class QueryBuilder {
 			subQuery(query)
 		}
 
-		this.unions.push({ query, all })
+		this.queryObj.unions.push({ query: query.queryObj, all })
 		this.addBinding(query.getBindings(), 'union')
 
 		return this
@@ -793,7 +728,7 @@ export class QueryBuilder {
 	 * Get the SQL representation of the query.
 	 */
 	toSql(): string {
-		return this.grammar.compileSelect(this)
+		return this.grammar.compileSelect(this.queryObj)
 	}
 
 	/**
@@ -902,8 +837,8 @@ export class QueryBuilder {
 	 * Execute an aggregate function on the database.
 	 */
 	getAggregate(functionName: string, columns: string[] = ['*']): any {
-		const results = this.cloneWithout(this.unions ? [] : ['columns'])
-			.cloneWithoutBindings(this.unions ? [] : ['select'])
+		const results = this.cloneWithout(this.queryObj.unions ? [] : ['columns'])
+			.cloneWithoutBindings(this.queryObj.unions ? [] : ['select'])
 			.setAggregate(functionName, columns)
 			.get(columns)
 
@@ -916,11 +851,11 @@ export class QueryBuilder {
 	 * Set the aggregate property without running the query.
 	 */
 	protected setAggregate(functionName: string, columns: string[]): QueryBuilder {
-		this.aggregate = { functionName, columns }
+		this.queryObj.aggregate = { functionName, columns }
 
-		if (this.groups.length === 0) {
-			this.orders = []
-			this.bindings.order = []
+		if (this.queryObj.groups.length === 0) {
+			this.queryObj.orders = []
+			this.queryObj.bindings.order = []
 		}
 
 		return this
@@ -932,14 +867,14 @@ export class QueryBuilder {
 	 * After running the callback, the columns are reset to the original value.
 	 */
 	protected onceWithColumns(columns: string[], callback: () => any): any {
-		const original = this.columns.slice()
+		const original = this.queryObj.columns.slice()
 
 		if (!original) {
-			this.columns = columns
+			this.queryObj.columns = columns
 		}
 
 		const result = callback()
-		this.columns = original
+		this.queryObj.columns = original
 		return result
 	}
 
@@ -961,7 +896,7 @@ export class QueryBuilder {
 		// the results. We will need to also flatten these bindings before running
 		// the query so they are all in one huge, flattened array for execution.
 		return this.connection.insert(
-			this.grammar.compileInsert(this, values),
+			this.grammar.compileInsert(this.queryObj, values),
 			this.cleanBindings(new Collection(values).flatten(1).all())
 		)
 	}
@@ -974,12 +909,12 @@ export class QueryBuilder {
 		// ID to let developers to simply and quickly remove a single row from this
 		// database without manually specifying the "where" clauses on the query.
 		if (!id) {
-			this.where(this.fromTable + '.id', '=', id)
+			this.where(this.queryObj.from + '.id', '=', id)
 		}
 
 		return this.connection.delete(
-			this.grammar.compileDelete(this),
-			this.cleanBindings(this.grammar.prepareBindingsForDelete(this.bindings))
+			this.grammar.compileDelete(this.queryObj),
+			this.cleanBindings(this.grammar.prepareBindingsForDelete(this.queryObj.bindings))
 		)
 	}
 
@@ -1001,14 +936,14 @@ export class QueryBuilder {
 	 * Get the current query value bindings in a flattened array.
 	 */
 	getBindings(): any[] {
-		return new Collection(this.bindings).flatten().all()
+		return new Collection(this.queryObj.bindings).flatten().all()
 	}
 
 	/**
 	 * Get the raw array of bindings.
 	 */
 	getRawBindings(): Bindings {
-		return this.bindings
+		return this.queryObj.bindings
 	}
 
 	/**
@@ -1020,9 +955,9 @@ export class QueryBuilder {
 		}
 
 		if (value instanceof Array) {
-			this.bindings[type] = this.bindings[type].concat(value)
+			this.queryObj.bindings[type] = this.queryObj.bindings[type].concat(value)
 		} else {
-			this.bindings[type].push(value)
+			this.queryObj.bindings[type].push(value)
 		}
 
 		return this
@@ -1129,16 +1064,6 @@ export class QueryBuilder {
 
 export class JoinClause extends QueryBuilder {
 	/**
-	 * The type of join being performed.
-	 */
-	type: string
-
-	/**
-	 * The table the join clause is joining to.
-	 */
-	table: string
-
-	/**
 	 * The parent query builder instance.
 	 */
 	protected parentQuery: QueryBuilder
@@ -1149,8 +1074,8 @@ export class JoinClause extends QueryBuilder {
 	constructor(parentQuery: QueryBuilder, type: string, table: string) {
 		super(parentQuery.getConnection(), parentQuery.getGrammar(), parentQuery.getProcessor())
 
-		this.type = type
-		this.table = table
+		this.queryObj.joinType = type
+		this.queryObj.joinTable = table
 		this.parentQuery = parentQuery
 	}
 
@@ -1184,7 +1109,7 @@ export class JoinClause extends QueryBuilder {
 	 * Get a new instance of the join clause builder.
 	 */
 	newQuery(): JoinClause {
-		return new JoinClause(this.parentQuery, this.type, this.table)
+		return new JoinClause(this.parentQuery, this.queryObj.joinType!, this.queryObj.joinTable!)
 	}
 
 	/**

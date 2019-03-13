@@ -48,16 +48,16 @@ describe('QueryBuilder', () => {
 		//     assertEquals('select "baz" from "users"', sql);
 		// });
 		builder.from('users').get()
-		expect(builder.columns).toEqual([])
+		expect(builder.queryObj.columns).toEqual([])
 
 		builder.from('users').get(['foo', 'bar'])
-		expect(builder.columns).toEqual([])
+		expect(builder.queryObj.columns).toEqual([])
 
 		builder.from('users').get('baz')
-		expect(builder.columns).toEqual([])
+		expect(builder.queryObj.columns).toEqual([])
 
 		expect(builder.toSql()).toBe('SELECT * FROM "users"')
-		expect(builder.columns).toEqual([])
+		expect(builder.queryObj.columns).toEqual([])
 	})
 
 	test('basicTableWrappingProtectsQuotationMarks', () => {
@@ -650,7 +650,7 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual([1])
 	})
 
-	test.only('SubSelectWhereIns', () => {
+	test('SubSelectWhereIns', () => {
 		builder = getBuilder()
 		builder
 			.select('*')
@@ -725,18 +725,21 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.groupBy('email')
 		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "email"')
+
 		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
 			.groupBy('id', 'email')
 		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "id", "email"')
+
 		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
 			.groupBy(['id', 'email'])
 		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "id", "email"')
+
 		builder = getBuilder()
 		builder
 			.select('*')
@@ -745,28 +748,33 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY DATE(created_at)')
 	})
 
-	// test('OrderBys', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').orderBy('email').orderBy('age', 'desc');
-	//     expect(builder.toSql()).toBe('select * from "users" order by "email" asc, "age" desc')
-	//     builder.orders = null;
-	//     expect(builder.toSql()).toBe('select * from "users"')
-	//     builder.orders = [];
-	//     expect(builder.toSql()).toBe('select * from "users"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').orderBy('email').orderByRaw('"age" ? desc', ['foo']);
-	//     expect(builder.toSql()).toBe('select * from "users" order by "email" asc, "age" ? desc')
-	//     expect(builder.getBindings()).toEqual(['foo'])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').orderByDesc('name');
-	//     expect(builder.toSql()).toBe('select * from "users" order by "name" desc')
-	// })
+	test('OrderBys', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.orderBy('email')
+			.orderBy('age', 'desc')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" ORDER BY "email" ASC, "age" DESC')
+		builder.queryObj.orders = []
+		expect(builder.toSql()).toBe('SELECT * FROM "users"')
 
-	// test('OrderByInvalidDirectionParam', () => {
-	//     // expectException(InvalidArgumentException:: class);
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').orderBy('age', 'asec');
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.orderBy('email')
+			.orderByRaw('"age" ? desc', ['foo'])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" ORDER BY "email" ASC, "age" ? desc')
+		expect(builder.getBindings()).toEqual(['foo'])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.orderByDesc('name')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" ORDER BY "name" DESC')
+	})
 
 	// test('Havings', () => {
 	//     builder = getBuilder();

@@ -1,6 +1,8 @@
 import { Expression } from './Query/Expression'
 import { Collection } from './Utils'
 
+export type BaseGrammarWrap = string | string[] | Expression | Expression[]
+
 export class BaseGrammar {
 	/**
 	 * The grammar table prefix.
@@ -28,7 +30,7 @@ export class BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap = (value: string | string[] | Expression | Expression[], prefixAlias: boolean = false): string | number => {
+	wrap(value: BaseGrammarWrap, prefixAlias: boolean = false): string | number {
 		if (this.isExpression(value)) {
 			return this.getValue(value)
 		}

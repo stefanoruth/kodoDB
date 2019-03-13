@@ -1,10 +1,9 @@
-import { QueryBuilder, JoinClause } from '../QueryBuilder'
 import { Expression } from '../Expression'
-import { BaseGrammar } from '../../BaseGrammar'
+import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
-import { Bindings } from '../Bindings'
-import { WhereClause } from '../WhereClause'
-import { QueryGroup } from '../QueryComponents'
+import { QueryObj } from '../QueryObj'
+import { JoinClause } from '../QueryBuilder'
+import { WhereClause, Group, Bindings } from '../Components'
 
 export class QueryGrammar extends BaseGrammar {
 	/**
@@ -18,14 +17,14 @@ export class QueryGrammar extends BaseGrammar {
 	protected selectComponents = [
 		'aggregate',
 		'columns',
-		'fromTable',
+		'from',
 		'joins',
 		'wheres',
 		'groups',
 		'havings',
 		'orders',
-		'limitRecords',
-		'offsetRecords',
+		'limit',
+		'offset',
 		'unions',
 		'lock',
 	]
@@ -33,7 +32,9 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a select query into SQL.
 	 */
-	compileSelect(query: QueryBuilder): string {
+	compileSelect(query: QueryObj): string {
+		// console.log(query, query.wheres)
+
 		if (query.unions && query.aggregate) {
 			return this.compileUnionAggregate(query)
 		}
@@ -56,21 +57,18 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the components necessary for a select clause.
 	 */
-	protected compileComponents(query: QueryBuilder): any[] {
+	protected compileComponents(query: QueryObj): any[] {
 		const sql: any = {}
 
 		this.selectComponents.forEach((component: string) => {
 			// To compile the query, we'll spin through each component of the query and
 			// see if that component exists. If it does we'll just call the compiler
 			// function for the component which is responsible for making the SQL.
-			const method = 'compile' + Str.ucfirst(component)
-			const comp = (query as any)[component]
-			const isArray = comp instanceof Array
 
-			console.log(method, comp)
-
-			if ((isArray && comp.length > 0) || (!isArray && comp)) {
+			if ((query as any)[component]) {
+				const method = 'compile' + Str.ucfirst(component)
 				if (typeof (this as any)[method] === 'function') {
+					// console.log(method, (query as any)[component])
 					sql[component] = (this as any)[method](query, (query as any)[component])
 				} else {
 					console.log(`QueryGrammar: ${method}`)
@@ -84,7 +82,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile an aggregated select clause.
 	 */
-	compileAggregate(query: QueryBuilder, aggregate: any): string {
+	compileAggregate(query: QueryObj, aggregate: any): string {
 		let column = this.columnize(aggregate.columns)
 		// If the query has a "distinct" constraint and we're not asking for all columns
 		// we need to prepend "distinct" onto the column name so that the query takes
@@ -99,7 +97,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "select *" portion of the query.
 	 */
-	protected compileColumns(query: QueryBuilder, columns: any[]): string | void {
+	protected compileColumns(query: QueryObj, columns: any[]): string | void {
 		// If the query is actually performing an aggregating select, we will let that
 		// compiler handle the building of the select clauses, as it will need some
 		// more syntax that is best handled by that function to keep things neat.
@@ -107,7 +105,7 @@ export class QueryGrammar extends BaseGrammar {
 			return
 		}
 
-		const select = query.distinctSelect ? 'SELECT DISTINCT ' : 'SELECT '
+		const select = query.distinct ? 'SELECT DISTINCT ' : 'SELECT '
 
 		return select + this.columnize(columns)
 	}
@@ -115,20 +113,21 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "from" portion of the query.
 	 */
-	protected compileFromTable(query: QueryBuilder, table: string): string {
+	protected compileFrom(query: QueryObj, table: string): string {
 		return 'FROM ' + this.wrapTable(table)
 	}
 
 	/**
 	 * Compile the "join" portions of the query.
 	 */
-	protected compileJoins(query: QueryBuilder, joins: JoinClause[]): string {
+	protected compileJoins(query: QueryObj, joins: QueryObj[]): string {
 		return new Collection(joins)
-			.map((join: JoinClause) => {
-				const table = this.wrapTable(join.table)
+			.map((join: QueryObj) => {
+				const table = this.wrapTable(join.joinTable!)
 				const nestedJoins = join.joins.length > 0 ? ' ' + this.compileJoins(query, join.joins) : ' '
 				const tableAndNestedJoins = join.joins.length > 0 ? `${table}.${nestedJoins}` : table
-				return `${join.type} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
+
+				return `${join.joinType!} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
 			})
 			.join(' ')
 	}
@@ -136,7 +135,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "where" portions of the query.
 	 */
-	protected compileWheres(query: QueryBuilder): string {
+	protected compileWheres(query: QueryObj): string {
 		// Each type of where clauses has its own compiler function which is responsible
 		// for actually creating the where clauses SQL. This helps keep the code nice
 		// and maintainable since each clause has a very small method that it uses.
@@ -158,7 +157,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Get an array of all the where clauses for the query.
 	 */
-	protected compileWheresToArray(query: QueryBuilder): any[] {
+	protected compileWheresToArray(query: QueryObj): any[] {
 		return new Collection(query.wheres)
 			.map(where => {
 				const method = 'where' + Str.ucfirst(where.type)
@@ -175,8 +174,8 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Format the where clause statements into one string.
 	 */
-	protected concatenateWhereClauses(query: QueryBuilder, sql: string[]): string {
-		const conjunction = query instanceof JoinClause ? 'ON' : 'WHERE'
+	protected concatenateWhereClauses(query: QueryObj, sql: string[]): string {
+		const conjunction = query.joinType && query.joinTable ? 'ON' : 'WHERE'
 
 		// $conjunction = $query instanceof JoinClause ? 'on' : 'where';
 		// return $conjunction.' '.$this -> removeLeadingBoolean(implode(' ', $sql));
@@ -186,14 +185,14 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a raw where clause.
 	 */
-	protected whereRaw(query: QueryBuilder, where: WhereClause): string {
+	protected whereRaw(query: QueryObj, where: WhereClause): string {
 		return String(where.sql)
 	}
 
 	/**
 	 * Compile a basic where clause.
 	 */
-	protected whereBasic(query: QueryBuilder, where: WhereClause): string {
+	protected whereBasic(query: QueryObj, where: WhereClause): string {
 		const value = this.parameter(where.values)
 
 		return `${this.wrap(where.column!)} ${where.operator} ${value}`
@@ -202,7 +201,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a "where in" clause.
 	 */
-	protected whereIn(query: QueryBuilder, where: WhereClause): string {
+	protected whereIn(query: QueryObj, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
 			return `${this.wrap(where.column!)} IN (${this.parameterize(where.values)})`
 		}
@@ -213,7 +212,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a "where not in" clause.
 	 */
-	protected whereNotIn(query: QueryBuilder, where: WhereClause): string {
+	protected whereNotIn(query: QueryObj, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
 			return `${this.wrap(where.column!)} NOT IN (${this.parameterize(where.values)})`
 		}
@@ -226,7 +225,7 @@ export class QueryGrammar extends BaseGrammar {
 	 *
 	 * For safety, whereIntegerInRaw ensures this method is only used with integer values.
 	 */
-	protected whereNotInRaw(query: QueryBuilder, where: WhereClause): string {
+	protected whereNotInRaw(query: QueryObj, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
 			return `${this.wrap(where.column!)} NOT IN (${where.values.join(', ')})`
 		}
@@ -237,15 +236,15 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a where in sub-select clause.
 	 */
-	protected whereInSub(query: QueryBuilder, where: WhereClause): string {
-		return `${this.wrap(where.column!)} IN (${this.compileSelect(where.query)})`
+	protected whereInSub(query: QueryObj, where: WhereClause): string {
+		return `${this.wrap(where.column!)} IN (${this.compileSelect(where.query!)})`
 	}
 
 	/**
 	 * Compile a where not in sub-select clause.
 	 */
-	protected whereNotInSub(query: QueryBuilder, where: WhereClause): string {
-		return `${this.wrap(where.column!)} NOT IN (${this.compileSelect(where.query)})`
+	protected whereNotInSub(query: QueryObj, where: WhereClause): string {
+		return `${this.wrap(where.column!)} NOT IN (${this.compileSelect(where.query!)})`
 	}
 
 	/**
@@ -253,7 +252,7 @@ export class QueryGrammar extends BaseGrammar {
 	 *
 	 * For safety, whereIntegerInRaw ensures this method is only used with integer values.
 	 */
-	protected whereInRaw(query: QueryBuilder, where: WhereClause): string {
+	protected whereInRaw(query: QueryObj, where: WhereClause): string {
 		if (where.values instanceof Array && where.values.length > 0) {
 			return `${this.wrap(where.column!)} IN (${where.values.join(', ')})`
 		}
@@ -263,21 +262,21 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a "where null" clause.
 	 */
-	protected whereNull(query: QueryBuilder, where: WhereClause): string {
+	protected whereNull(query: QueryObj, where: WhereClause): string {
 		return this.wrap(where.column!) + ' IS NULL'
 	}
 
 	/**
 	 * Compile a "where not null" clause.
 	 */
-	protected whereNotNull(query: QueryBuilder, where: WhereClause): string {
+	protected whereNotNull(query: QueryObj, where: WhereClause): string {
 		return this.wrap(where.column!) + ' IS NOT NULL'
 	}
 
 	/**
 	 * Compile a "between" where clause.
 	 */
-	protected whereBetween(query: QueryBuilder, where: WhereClause): string {
+	protected whereBetween(query: QueryObj, where: WhereClause): string {
 		const between = where.not ? 'NOT BETWEEN' : 'BETWEEN'
 		const min = this.parameter(where.values[0])
 		const max = this.parameter(where.values[where.values.length - 1])
@@ -288,80 +287,85 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a where clause comparing two columns..
 	 */
-	protected whereColumn(query: QueryBuilder, where: WhereClause): string {
+	protected whereColumn(query: QueryObj, where: WhereClause): string {
 		return `${this.wrap(where.first)} ${where.operator} ${this.wrap(where.second)}`
 	}
 
 	/**
 	 * Compile a nested where clause.
 	 */
-	protected whereNested(query: QueryBuilder, where: WhereClause): string {
+	protected whereNested(query: QueryObj, where: WhereClause): string {
 		// Here we will calculate what portion of the string we need to remove. If this
 		// is a join clause query, we need to remove the "on" portion of the SQL and
 		// if it is a normal query we need to take the leading "where" of queries.
 		const offset = query instanceof JoinClause ? 3 : 6
 
-		return `(${this.compileWheres(where.query).substr(offset)})`
+		return `(${this.compileWheres(where.query!).substr(offset)})`
 	}
 
 	/**
 	 * Compile the "group by" portions of the query.
 	 */
-	protected compileGroups(query: QueryBuilder, groups: QueryGroup[]): string {
+	protected compileGroups(query: QueryObj, groups: Group[]): string {
+		if (groups.length === 0) {
+			return ''
+		}
+
 		return 'GROUP BY ' + this.columnize(groups)
 	}
 
-	// /**
-	//  * Compile the "having" portions of the query.
-	//  */
-	// protected compileHavings(query: QueryBuilder, havings: any[]): string {
-	// 	// const sql = implode(' ', array_map([$this, 'compileHaving'], havings));
-	// 	// return 'having '+this.removeLeadingBoolean(sql);
-	// 	return ''
-	// }
+	/**
+	 * Compile the "having" portions of the query.
+	 */
+	protected compileHavings(query: QueryObj, havings: any[]): string {
+		if (havings.length === 0) {
+			return ''
+		}
 
-	// /**
-	//  * Compile a single having clause.
-	//  */
-	// protected compileHaving(having: any): string {
-	// 	// If the having clause is "raw", we can just return the clause straight away
-	// 	// without doing any more processing on it. Otherwise, we will compile the
-	// 	// clause into SQL based on the components that make it up from builder.
-	// 	// if ($having['type'] === 'Raw') {
-	// 	//     return $having['boolean'].' '.$having['sql'];
-	// 	// } elseif($having['type'] === 'between') {
-	// 	//     return $this -> compileHavingBetween($having);
-	// 	// }
-	// 	// return $this -> compileBasicHaving($having);
-	// 	return ''
-	// }
+		const sql = havings.map(having => this.compileHaving(having)).join(' ')
 
-	// /**
-	//  * Compile a basic having clause.
-	//  */
-	// protected compileBasicHaving(having: any): string {
-	// 	// $column = $this -> wrap($having['column']);
-	// 	// $parameter = $this -> parameter($having['value']);
-	// 	// return $having['boolean'].' '.$column.' '.$having['operator'].' '.$parameter;
-	// 	return ''
-	// }
+		return 'HAVING ' + this.removeLeadingBoolean(sql)
+	}
 
-	// /**
-	//  * Compile a "between" having clause.
-	//  */
-	// protected compileHavingBetween(having: any): string {
-	// 	// $between = $having['not'] ? 'not between' : 'between';
-	// 	// $column = $this -> wrap($having['column']);
-	// 	// $min = $this -> parameter(head($having['values']));
-	// 	// $max = $this -> parameter(last($having['values']));
-	// 	// return $having['boolean'].' '.$column.' '.$between.' '.$min.' and '.$max;
-	// 	return ''
-	// }
+	/**
+	 * Compile a single having clause.
+	 */
+	protected compileHaving(having: any): string {
+		// If the having clause is "raw", we can just return the clause straight away
+		// without doing any more processing on it. Otherwise, we will compile the
+		// clause into SQL based on the components that make it up from builder.
+		if (having.type === 'Raw') {
+			return having.bool + ' ' + having.sql
+		} else if (having.type === 'between') {
+			return this.compileHavingBetween(having)
+		}
+		return this.compileBasicHaving(having)
+	}
+
+	/**
+	 * Compile a basic having clause.
+	 */
+	protected compileBasicHaving(having: any): string {
+		const column = this.wrap(having.column)
+		const parameter = this.parameter(having.value)
+		return having.bool + ' ' + column + ' ' + having.operator + ' ' + parameter
+	}
+
+	/**
+	 * Compile a "between" having clause.
+	 */
+	protected compileHavingBetween(having: any): string {
+		const between = having.not ? 'not between' : 'between'
+		const column = this.wrap(having.column)
+		const min = this.parameter(having.values[0])
+		const max = this.parameter(having.values[having.values.length - 1])
+		return having.bool + ' ' + column + ' ' + between + ' ' + min + ' and ' + max
+	}
 
 	/**
 	 * Compile the "order by" portions of the query.
 	 */
-	protected compileOrders(query: QueryBuilder, orders: any[]): string {
+	protected compileOrders(query: QueryObj, orders: any[]): string {
 		if (orders.length > 0) {
 			return 'ORDER BY ' + this.compileOrdersToArray(query, orders).join(', ')
 		}
@@ -371,7 +375,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the query orders to an array.
 	 */
-	protected compileOrdersToArray(query: QueryBuilder, orders: any[]): any[] {
+	protected compileOrdersToArray(query: QueryObj, orders: any[]): any[] {
 		return orders.map(order => {
 			if (order.sql) {
 				return order.sql
@@ -391,21 +395,21 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "limit" portions of the query.
 	 */
-	protected compileLimitRecords(query: QueryBuilder, limit: number): string {
+	protected compileLimit(query: QueryObj, limit: number): string {
 		return 'LIMIT ' + limit
 	}
 
 	/**
 	 * Compile the "offset" portions of the query.
 	 */
-	protected compileOffset(query: QueryBuilder, offset: number): string {
+	protected compileOffset(query: QueryObj, offset: number): string {
 		return 'OFFSET ' + offset
 	}
 
 	/**
 	 * Compile the "union" queries attached to the main query.
 	 */
-	protected compileUnions(query: QueryBuilder): string {
+	protected compileUnions(query: QueryObj): string {
 		const sql: string[] = []
 		query.unions.forEach(union => {
 			sql.push(this.compileUnion(union))
@@ -414,7 +418,7 @@ export class QueryGrammar extends BaseGrammar {
 			sql.push(this.compileOrders(query, query.unionOrders))
 		}
 		if (query.unionLimit) {
-			sql.push(this.compileLimitRecords(query, query.unionLimit))
+			sql.push(this.compileLimit(query, query.unionLimit))
 		}
 		if (query.unionOffset) {
 			sql.push(this.compileOffset(query, query.unionOffset))
@@ -432,13 +436,13 @@ export class QueryGrammar extends BaseGrammar {
 	protected compileUnion(union: any): string {
 		const conjunction = union.all ? ' UNION ALL ' : ' UNION '
 
-		return conjunction + union.query.toSql()
+		return conjunction + this.compileSelect(union.query)
 	}
 
 	/**
 	 * Compile a union aggregate query into SQL.
 	 */
-	protected compileUnionAggregate(query: QueryBuilder): string {
+	protected compileUnionAggregate(query: QueryObj): string {
 		const sql = this.compileAggregate(query, query.aggregate)
 
 		query.aggregate = undefined
@@ -449,11 +453,11 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile an insert statement into SQL.
 	 */
-	compileInsert(query: QueryBuilder, values: any[]): string {
+	compileInsert(query: QueryObj, values: any[]): string {
 		// Essentially we will force every insert to be treated as a batch insert which
 		// simply makes creating the SQL easier for us since we can utilize the same
 		// basic routine regardless of an amount of records given to us to insert.
-		const table = this.wrapTable(query.fromTable)
+		const table = this.wrapTable(query.from)
 		if (values[0] && !(values instanceof Array)) {
 			values = [values]
 		}
@@ -486,10 +490,10 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a delete statement into SQL.
 	 */
-	compileDelete(query: QueryBuilder): string {
+	compileDelete(query: QueryObj): string {
 		const wheres = query.wheres instanceof Array ? this.compileWheres(query) : ''
 
-		return `DELETE FROM ${this.wrapTable(query.fromTable)} ${wheres}`.trim()
+		return `DELETE FROM ${this.wrapTable(query.from)} ${wheres}`.trim()
 	}
 
 	/**
@@ -523,7 +527,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Wrap a value in keyword identifiers.
 	 */
-	wrap = (value: string | string[] | Expression | Expression[], prefixAlias: boolean = false): string | number => {
+	wrap(value: BaseGrammarWrap, prefixAlias: boolean = false): string | number {
 		if (this.isExpression(value)) {
 			return this.getValue(value)
 		}
