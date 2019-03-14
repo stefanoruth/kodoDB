@@ -776,83 +776,514 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe('SELECT * FROM "users" ORDER BY "name" DESC')
 	})
 
-	// test('Havings', () => {
+	test('Havings', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.having('email', '>', 1)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "email" > ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.orHaving('email', '=', 'test@example.com')
+			.orHaving('email', '=', 'test@example.com')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "email" = ? OR "email" = ?')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.groupBy('email')
+			.having('email', '>', 1)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" GROUP BY "email" HAVING "email" > ?')
+
+		builder = getBuilder()
+		builder
+			.select('email as foo_email')
+			.from('users')
+			.having('foo_email', '>', 1)
+		expect(builder.toSql()).toBe('SELECT "email" AS "foo_email" FROM "users" HAVING "foo_email" > ?')
+
+		builder = getBuilder()
+		builder
+			.select(['category', new Expression('count(*) as "total"')])
+			.from('item')
+			.where('department', '=', 'popular')
+			.groupBy('category')
+			.having('total', '>', new Expression('3'))
+		// expect(builder.toSql()).toBe(
+		// 	'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > 3'
+		// )
+
+		builder = getBuilder()
+		builder
+			.select(['category', new Expression('count(*) as "total"')])
+			.from('item')
+			.where('department', '=', 'popular')
+			.groupBy('category')
+			.having('total', '>', 3)
+		expect(builder.toSql()).toBe(
+			'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > ?'
+		)
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.havingBetween('last_login_date', ['2018-11-16', '2018-12-16'])
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "last_login_date" BETWEEN ? AND ?')
+	})
+
+	test('HavingShortcut', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.having('email', 1)
+			.orHaving('email', 2)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "email" = ? OR "email" = ?')
+	})
+
+	test('RawHavings', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.havingRaw('user_foo < user_bar')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING user_foo < user_bar')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.having('baz', '=', 1)
+			.orHavingRaw('user_foo < user_bar')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "baz" = ? OR user_foo < user_bar')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.havingBetween('last_login_date', ['2018-11-16', '2018-12-16'])
+			.orHavingRaw('user_foo < user_bar')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" HAVING "last_login_date" BETWEEN ? AND ? OR user_foo < user_bar'
+		)
+	})
+
+	test('LimitsAndOffsets', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.offset(5)
+			.limit(10)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 10 OFFSET 5')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.skip(5)
+			.take(10)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 10 OFFSET 5')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.skip(0)
+			.take(0)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 0 OFFSET 0')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.skip(-5)
+			.take(-10)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" OFFSET 0')
+	})
+
+	test('ForPage', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(2, 15)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 15 OFFSET 15')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(0, 15)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 15 OFFSET 0')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(-2, 15)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 15 OFFSET 0')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(2, 0)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 0 OFFSET 0')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(0, 0)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 0 OFFSET 0')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.forPage(-2, 0)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 0 OFFSET 0')
+	})
+
+	test('WhereShortcut', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('id', 1)
+			.orWhere('name', 'foo')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "id" = ? OR "name" = ?')
+		expect(builder.getBindings()).toEqual([1, 'foo'])
+	})
+
+	// test('WhereWithArrayConditions', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').having('email', '>', 1);
-	//     expect(builder.toSql()).toBe('select * from "users" having "email" > ?')
+	//     builder.select('*').from('users').where([['foo', 1], ['bar', 2]]);
+	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" = ?)')
+	//     expect(builder.getBindings()).toEqual([1, 2])
 	//     builder = getBuilder();
-	//     builder.select('*').from('users')
-	//         .orHaving('email', '=', 'test@example.com')
-	//         .orHaving('email', '=', 'test@example.com');
-	//     expect(builder.toSql()).toBe('select * from "users" having "email" = ? or "email" = ?')
+	//     builder.select('*').from('users').where(['foo' => 1, 'bar' => 2]);
+	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" = ?)')
+	//     expect(builder.getBindings()).toEqual([1, 2])
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').groupBy('email').having('email', '>', 1);
-	//     expect(builder.toSql()).toBe('select * from "users" group by "email" having "email" > ?')
+	//     builder.select('*').from('users').where([['foo', 1], ['bar', '<', 2]]);
+	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" < ?)')
+	//     expect(builder.getBindings()).toEqual([1, 2])
+	// }
+
+	// )
+	test('NestedWheres', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('email', '=', 'foo')
+			.orWhere(q => {
+				q.where('name', '=', 'bar').where('age', '=', 25)
+			})
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "email" = ? OR ("name" = ? AND "age" = ?)')
+		expect(builder.getBindings()).toEqual(['foo', 'bar', 25])
+	})
+
+	test('NestedWhereBindings', () => {
+		builder = getBuilder()
+		builder.where('email', '=', 'foo').where(q => {
+			q.selectRaw('?', ['ignore']).where('name', '=', 'bar')
+		})
+		expect(builder.getBindings()).toEqual(['foo', 'bar'])
+	})
+
+	// test('FullSubSelects', () => {
 	//     builder = getBuilder();
-	//     builder.select('email as foo_email').from('users').having('foo_email', '>', 1);
-	//     expect(builder.toSql()).toBe('select "email" as "foo_email" from "users" having "foo_email" > ?')
-	//     builder = getBuilder();
-	//     builder.select(['category', new Expression('count(*) as "total"')]).from('item').where('department', '=', 'popular').groupBy('category').having('total', '>', new Expression('3'));
-	//     expect(builder.toSql()).toBe('select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > 3')
-	//     builder = getBuilder();
-	//     builder.select(['category', new Expression('count(*) as "total"')]).from('item').where('department', '=', 'popular').groupBy('category').having('total', '>', 3);
-	//     expect(builder.toSql()).toBe('select "category", count(*) as "total" from "item" where "department" = ? group by "category" having "total" > ?')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').havingBetween('last_login_date', ['2018-11-16', '2018-12-16']);
-	//     expect(builder.toSql()).toBe('select * from "users" having "last_login_date" between ? and ?')
+	//     builder.select('*').from('users').where('email', '=', 'foo').orWhere('id', '=', q => {
+	//         q.select(new Expression('max(id)')).from('users').where('email', '=', 'bar');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" where "email" = ? or "id" = (select max(id) from "users" where "email" = ?)')
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
 	// })
 
-	// test('HavingShortcut', () => {
+	// test('WhereExists', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').having('email', 1).orHaving('email', 2);
-	//     expect(builder.toSql()).toBe('select * from "users" having "email" = ? or "email" = ?')
-	// })
+	//     builder.select('*').from('orders').whereExists(q => {
+	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")')
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').whereNotExists(q => {
+	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "orders" where not exists (select * from "products" where "products"."id" = "orders"."id")')
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').where('id', '=', 1).orWhereExists(q => {
+	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "orders" where "id" = ? or exists (select * from "products" where "products"."id" = "orders"."id")')
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').where('id', '=', 1).orWhereNotExists(q => {
+	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")')
+	// }
 
-	// test('RawHavings', () => {
+	// )
+	// test('BasicJoins', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').havingRaw('user_foo < user_bar');
-	//     expect(builder.toSql()).toBe('select * from "users" having user_foo < user_bar')
+	//     builder.select('*').from('users').join('contacts', 'users.id', 'contacts.id');
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id"')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').having('baz', '=', 1).orHavingRaw('user_foo < user_bar');
-	//     expect(builder.toSql()).toBe('select * from "users" having "baz" = ? or user_foo < user_bar')
+	//     builder.select('*').from('users').join('contacts', 'users.id', '=', 'contacts.id').leftJoin('photos', 'users.id', '=', 'photos.id');
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" left join "photos" on "users"."id" = "photos"."id"')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').havingBetween('last_login_date', ['2018-11-16', '2018-12-16']).orHavingRaw('user_foo < user_bar');
-	//     expect(builder.toSql()).toBe('select * from "users" having "last_login_date" between ? and ? or user_foo < user_bar')
-	// })
+	//     builder.select('*').from('users').leftJoinWhere('photos', 'users.id', '=', 'bar').joinWhere('photos', 'users.id', '=', 'foo');
+	//     expect(builder.toSql()).toBe('select * from "users" left join "photos" on "users"."id" = ? inner join "photos" on "users"."id" = ?')
+	//     expect(builder.getBindings()).toEqual(['bar', 'foo'])
+	// }
 
-	// test('LimitsAndOffsets', () => {
+	// )
+	// test('CrossJoins', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').offset(5).limit(10);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 10 offset 5')
+	//     builder.select('*').from('sizes').crossJoin('colors');
+	//     expect(builder.toSql()).toBe('select * from "sizes" cross join "colors"')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').skip(5).take(10);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 10 offset 5')
+	//     builder.select('*').from('tableB').join('tableA', 'tableA.column1', '=', 'tableB.column2', 'cross');
+	//     expect(builder.toSql()).toBe('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').skip(0).take(0);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').skip(-5).take(-10);
-	//     expect(builder.toSql()).toBe('select * from "users" offset 0')
-	// })
+	//     builder.select('*').from('tableB').crossJoin('tableA', 'tableA.column1', '=', 'tableB.column2');
+	//     expect(builder.toSql()).toBe('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"')
+	// }
 
-	// test('ForPage', () => {
+	// )
+	// test('ComplexJoin', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(2, 15);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 15')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').orOn('users.name', '=', 'contacts.name');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "users"."name" = "contacts"."name"')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(0, 15);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 0')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.where('users.id', '=', 'foo').orWhere('users.name', '=', 'bar');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = ? or "users"."name" = ?')
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
+	//     // Run the assertions again
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = ? or "users"."name" = ?')
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
+	// }
+
+	// )
+	// test('JoinWhereNull', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(-2, 15);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 15 offset 0')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').whereNull('contacts.deleted_at');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."deleted_at" is null')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(2, 0);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').orWhereNull('contacts.deleted_at');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."deleted_at" is null')
+	// }
+
+	// )
+	// test('JoinWhereNotNull', () => {
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(0, 0);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').whereNotNull('contacts.deleted_at');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."deleted_at" is not null')
 	//     builder = getBuilder();
-	//     builder.select('*').from('users').forPage(-2, 0);
-	//     expect(builder.toSql()).toBe('select * from "users" limit 0 offset 0')
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').orWhereNotNull('contacts.deleted_at');
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."deleted_at" is not null')
+	// }
+
+	// )
+	// test('JoinWhereIn', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', [48, 'baz', null]);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" in (?, ?, ?)')
+	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', [48, 'baz', null]);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" in (?, ?, ?)')
+	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
+	// }
+
+	// )
+	// test('JoinWhereInSubquery', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         q = getBuilder();
+	//         q.select('name').from('contacts').where('name', 'baz');
+	//         j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', q);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" in (select "name" from "contacts" where "name" = ?)')
+	//     expect(builder.getBindings()).toEqual(['baz'])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         q = getBuilder();
+	//         q.select('name').from('contacts').where('name', 'baz');
+	//         j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', q);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" in (select "name" from "contacts" where "name" = ?)')
+	//     expect(builder.getBindings()).toEqual(['baz'])
+	// }
+
+	// )
+	// test('JoinWhereNotIn', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').whereNotIn('contacts.name', [48, 'baz', null]);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" not in (?, ?, ?)')
+	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').orWhereNotIn('contacts.name', [48, 'baz', null]);
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" not in (?, ?, ?)')
+	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
+	// }
+
+	// )
+	// test('JoinsWithNestedConditions', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').where(j => {
+	//             j.where('contacts.country', '=', 'US').orWhere('contacts.is_partner', '=', 1);
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and ("contacts"."country" = ? or "contacts"."is_partner" = ?)')
+	//     expect(builder.getBindings()).toEqual(['US', 1])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', '=', 'contacts.id').where('contacts.is_active', '=', 1).orOn(j => {
+	//             j.orWhere(j => {
+	//                 j.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type');
+	//             }).where(j => {
+	//                 j.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner');
+	//             });
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and "contacts"."is_active" = ? or (("contacts"."country" = ? or "contacts"."type" = "users"."type") and ("contacts"."country" = ? or "contacts"."is_partner" is null))')
+	//     expect(builder.getBindings()).toEqual([1, 'UK', 'US'])
+	// }
+
+	// )
+	// test('JoinsWithAdvancedConditions', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id').where(j => {
+	//             j.whereRole('admin')
+	//                 .orWhereNull('contacts.disabled')
+	//                 .orWhereRaw('year(contacts.created_at) = 2016');
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and ("role" = ? or "contacts"."disabled" is null or year(contacts.created_at) = 2016)')
+	//     expect(builder.getBindings()).toEqual(['admin'])
+	// }
+
+	// )
+	// test('JoinsWithSubqueryCondition', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id').whereIn('contact_type_id', q => {
+	//             q.select('id').from('contact_types')
+	//                 .where('category_id', '1')
+	//                 .whereNull('deleted_at');
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and "contact_type_id" in (select "id" from "contact_types" where "category_id" = ? and "deleted_at" is null)')
+	//     expect(builder.getBindings()).toEqual(['1'])
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id').whereExists(q => {
+	//             q.selectRaw('1').from('contact_types')
+	//                 .whereRaw('contact_types.id = contacts.contact_type_id')
+	//                 .where('category_id', '1')
+	//                 .whereNull('deleted_at');
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and exists (select 1 from "contact_types" where contact_types.id = contacts.contact_type_id and "category_id" = ? and "deleted_at" is null)')
+	//     expect(builder.getBindings()).toEqual(['1'])
+	// }
+
+	// )
+	// test('JoinsWithAdvancedSubqueryCondition', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id').whereExists(q => {
+	//             q.selectRaw('1').from('contact_types')
+	//                 .whereRaw('contact_types.id = contacts.contact_type_id')
+	//                 .where('category_id', '1')
+	//                 .whereNull('deleted_at')
+	//                 .whereIn('level_id', q => {
+	//                     q.select('id').from('levels')
+	//                         .where('is_active', true);
+	//                 });
+	//         });
+	//     });
+	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and exists (select 1 from "contact_types" where contact_types.id = contacts.contact_type_id and "category_id" = ? and "deleted_at" is null and "level_id" in (select "id" from "levels" where "is_active" = ?))')
+	//     expect(builder.getBindings()).toEqual(['1', true])
+	// }
+
+	// )
+	// test('JoinsWithNestedJoins', () => {
+	//     builder = getBuilder();
+	//     builder.select('users.id', 'contacts.id', 'contact_types.id').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id').join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id');
+	//     });
+	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id"')
+	// }
+
+	// )
+	// test('JoinsWithMultipleNestedJoins', () => {
+	//     builder = getBuilder();
+	//     builder.select('users.id', 'contacts.id', 'contact_types.id', 'countrys.id', 'planets.id').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id')
+	//             .join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
+	//             .leftJoin('countrys', q => {
+	//                 q.on('contacts.country', '=', 'countrys.country')
+	//                     .join('planets', q => {
+	//                         q.on('countrys.planet_id', '=', 'planet.id')
+	//                             .where('planet.is_settled', '=', 1)
+	//                             .where('planet.population', '>=', 10000);
+	//                     });
+	//             });
+	//     });
+	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id", "countrys"."id", "planets"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id" left join ("countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? and "planet"."population" >= ?) on "contacts"."country" = "countrys"."country") on "users"."id" = "contacts"."id"')
+	//     expect(builder.getBindings()).toEqual(['1', 10000])
+	// }
+
+	// )
+	// test('JoinsWithNestedJoinWithAdvancedSubqueryCondition', () => {
+	//     builder = getBuilder();
+	//     builder.select('users.id', 'contacts.id', 'contact_types.id').from('users').leftJoin('contacts', j => {
+	//         j.on('users.id', 'contacts.id')
+	//             .join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
+	//             .whereExists(q => {
+	//                 q.select('*').from('countrys')
+	//                     .whereColumn('contacts.country', '=', 'countrys.country')
+	//                     .join('planets', q => {
+	//                         q.on('countrys.planet_id', '=', 'planet.id')
+	//                             .where('planet.is_settled', '=', 1);
+	//                     })
+	//                     .where('planet.population', '>=', 10000);
+	//             });
+	//     });
+	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id" and exists (select * from "countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? where "contacts"."country" = "countrys"."country" and "planet"."population" >= ?)')
+	//     expect(builder.getBindings()).toEqual(['1', 10000])
 	// })
 })

@@ -3,17 +3,15 @@ import { QueryGrammar } from './Grammars/QueryGrammar'
 import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection, tap } from '../Utils'
 import { Expression } from './Expression'
-import { EloquentBuilder } from '../Eloquent/EloquentBuilder'
 import { Arr } from '../Utils/Arr'
 import { Operators } from './Operators'
 import { QueryObj } from './QueryObj'
-import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection } from './Components'
+import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause } from './Components'
 
-type QueryFn = (sub: QueryBuilder | EloquentBuilder) => any
+type QueryFn = (sub: QueryBuilder) => any
 type JoinFn = (join: JoinClause) => void
 
-export type Column = string | string[]
-type ColumnFn = () => void
+export type Column = string | Expression | Array<string | Expression>
 
 export class QueryBuilder {
 	/**
@@ -60,9 +58,46 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a subselect expression to the query.
+	 */
+	selectSub(query: QueryBuilder | string, as: string) {
+		const [subQuery, bindings] = this.createSub(query)
+
+		return this.selectRaw(`(${subQuery}) as ${this.grammar.wrap(as)}`, bindings)
+	}
+
+	/**
+	 * Add a new "raw" select expression to the query.
+	 */
+	selectRaw(expression: string, bindings: any[] = []): QueryBuilder {
+		this.addSelect(new Expression(expression))
+		if (bindings) {
+			this.addBinding(bindings, 'select')
+		}
+		return this
+	}
+
+	/**
+	 * Makes "from" fetch from a subquery.n
+	 */
+	fromSub(query: QueryBuilder | string, as: string): QueryBuilder {
+		const [subQuery, bindings] = this.createSub(query)
+		return this.fromRaw(`(${subQuery}) as ${this.grammar.wrap(as)}`, bindings)
+	}
+
+	/**
+	 * Add a raw from clause to the query.
+	 */
+	fromRaw(expression: string, bindings: any[] = []): QueryBuilder {
+		this.queryObj.from = new Expression(expression).toString()
+		this.addBinding(bindings, 'from')
+		return this
+	}
+
+	/**
 	 * Creates a subquery and parse it.
 	 */
-	protected createSub(query: QueryBuilder | EloquentBuilder | string | QueryFn): [string, any[]] {
+	protected createSub(query: QueryBuilder | string | QueryFn): [string, any[]] {
 		// If the given query is a Closure, we will execute it while passing in a new
 		// query instance to the Closure. This will give the developer a chance to
 		// format and work with the query before we cast it to a raw SQL string.
@@ -81,8 +116,8 @@ export class QueryBuilder {
 	 * @param  mixed  query
 	 * @return array
 	 */
-	protected parseSub(query: QueryBuilder | EloquentBuilder | string): [string, any[]] {
-		if (query instanceof QueryBuilder || query instanceof EloquentBuilder) {
+	protected parseSub(query: QueryBuilder | string): [string, any[]] {
+		if (query instanceof QueryBuilder) {
 			return [query.toSql(), query.getBindings()]
 		} else if (typeof query === 'string') {
 			return [query, []]
@@ -162,7 +197,7 @@ export class QueryBuilder {
 	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	where(column: Column | QueryFn, operator?: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -206,7 +241,13 @@ export class QueryBuilder {
 		// If the column is making a JSON reference we'll check to see if the value
 		// is a boolean. If it is, we'll add the raw boolean string as an actual
 		// value to the query to ensure this is properly handled by the query.
-		if (column.indexOf('->') > -1 && typeof value === 'boolean') {
+		if (
+			column
+				.toString()
+				.toString()
+				.indexOf('->') > -1 &&
+			typeof value === 'boolean'
+		) {
 			value = new Expression(value ? 'true' : 'false')
 		}
 
@@ -271,7 +312,7 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where" clause to the query.
 	 */
-	orWhere(column: string | string[], operator: any, value?: any): QueryBuilder {
+	orWhere(column: Column | QueryFn, operator?: any, value?: any): QueryBuilder {
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
 
 		return this.where(column, operator, value, 'OR')
@@ -341,10 +382,9 @@ export class QueryBuilder {
 		// If the value is a query builder instance we will assume the developer wants to
 		// look for any values that exists within this given query. So we will add the
 		// query accordingly so that this query is properly executed when it is run.
-		if (values instanceof QueryBuilder || values instanceof EloquentBuilder || typeof values === 'function') {
+		if (values instanceof QueryBuilder || typeof values === 'function') {
 			const [query, bindings] = this.createSub(values)
 			values = [new Expression(query)]
-			// console.log(values)
 			this.addBinding(bindings, 'where')
 		}
 
@@ -596,6 +636,66 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a "having" clause to the query.
+	 */
+	having(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+		const type = 'Basic'
+			// Here we will make some assumptions about the operator. If only 2 values are
+			// passed to the method, we will assume that the operator is an equals sign
+			// and keep going. Otherwise, we'll require the operator to be passed in.
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		// If the given operator is not found in the list of valid operators we will
+		// assume that the developer is just short-cutting the '=' operators and
+		// we will set the operators to '=' and set the values appropriately.
+		if (this.invalidOperator(operator)) {
+			;[value, operator] = [operator, '=']
+		}
+
+		this.queryObj.havings.push({ type, column, operator, values: value, bool })
+
+		if (!(value instanceof Expression)) {
+			this.addBinding(value, 'having')
+		}
+		return this
+	}
+
+	/**
+	 * Add a "or having" clause to the query.
+	 */
+	orHaving(column: Column, operator: any, value?: any): QueryBuilder {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+		return this.having(column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "having between " clause to the query.
+	 */
+	havingBetween(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = 'between'
+		this.queryObj.havings.push({ type, column, values, bool, not })
+		this.addBinding(this.cleanBindings(values), 'having')
+		return this
+	}
+
+	/**
+	 * Add a raw having clause to the query.
+	 */
+	havingRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
+		const type = 'Raw'
+		this.queryObj.havings.push({ type, sql, bool })
+		this.addBinding(bindings, 'having')
+		return this
+	}
+
+	/**
+	 * Add a raw or having clause to the query.
+	 */
+	orHavingRaw(sql: string, bindings: any[] = []): QueryBuilder {
+		return this.havingRaw(sql, bindings, 'OR')
+	}
+
+	/**
 	 * Add an "order by" clause to the query.
 	 */
 	orderBy(column: string, direction: OrderDirection = 'asc'): QueryBuilder {
@@ -667,7 +767,7 @@ export class QueryBuilder {
 	 * Set the "offset" value of the query.
 	 */
 	offset(value: number): QueryBuilder {
-		if (this.queryObj.unions) {
+		if (this.queryObj.unions.length > 0) {
 			this.queryObj.unionOffset = Math.max(0, value)
 		} else {
 			this.queryObj.offset = Math.max(0, value)
@@ -691,13 +791,47 @@ export class QueryBuilder {
 			return this
 		}
 
-		if (this.queryObj.unions) {
+		if (this.queryObj.unions.length > 0) {
 			this.queryObj.unionLimit = value
 		} else {
 			this.queryObj.limit = value
 		}
 
 		return this
+	}
+
+	/**
+	 * Set the limit and offset for a given page.
+	 */
+	forPage(page: number, perPage: number = 15): QueryBuilder {
+		return this.skip((page - 1) * perPage).take(perPage)
+	}
+
+	/**
+	 * Constrain the query to the next "page" of results after a given ID.
+	 */
+	forPageAfterId(perPage: number = 15, lastId: undefined | number = 0, column: string = 'id'): QueryBuilder {
+		this.queryObj.orders = this.removeExistingOrdersFor(column)
+		if (typeof lastId !== 'undefined') {
+			this.where(column, '>', lastId)
+		}
+		return this.orderBy(column, 'asc').take(perPage)
+	}
+
+	/**
+	 * Get an array with all orders with a given column removed.
+	 */
+	protected removeExistingOrdersFor(column: string): any[] {
+		return new Collection(this.queryObj.orders)
+			.reject(order => {
+				if (order.column) {
+					return order.column === column
+				}
+
+				return false
+			})
+			.values()
+			.all()
 	}
 
 	/**

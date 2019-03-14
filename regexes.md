@@ -2,7 +2,7 @@ Assert toSql
 
 ```
 assertEquals\('(.+)\',.+
-expect(builder.toSql()).toBe('\$1')
+expect(builder.toSql()).toBe('$1')
 ```
 
 AssertBinding
@@ -17,4 +17,11 @@ Raw Class
 ```
 new Raw
 new Expression
+```
+
+Callback
+
+```
+function \((.+)\)
+$1 =>
 ```

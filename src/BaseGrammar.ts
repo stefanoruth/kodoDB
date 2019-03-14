@@ -1,7 +1,7 @@
 import { Expression } from './Query/Expression'
 import { Collection } from './Utils'
 
-export type BaseGrammarWrap = string | string[] | Expression | Expression[]
+export type BaseGrammarWrap = string | string[] | Expression | Expression[] | Array<string | Expression>
 
 export class BaseGrammar {
 	/**

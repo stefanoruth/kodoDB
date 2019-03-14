@@ -33,7 +33,7 @@ export type WhereBoolean = 'AND' | 'OR'
 
 export interface WhereClause {
 	type: string
-	column?: string | string[]
+	column?: string | Expression | Array<string | Expression>
 	operator?: string
 	values?: string | number | null | [] | any
 	bool: WhereBoolean

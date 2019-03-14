@@ -33,8 +33,6 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile a select query into SQL.
 	 */
 	compileSelect(query: QueryObj): string {
-		// console.log(query, query.wheres)
-
 		if (query.unions && query.aggregate) {
 			return this.compileUnionAggregate(query)
 		}
@@ -64,12 +62,15 @@ export class QueryGrammar extends BaseGrammar {
 			// To compile the query, we'll spin through each component of the query and
 			// see if that component exists. If it does we'll just call the compiler
 			// function for the component which is responsible for making the SQL.
+			const value = (query as any)[component]
 
-			if ((query as any)[component]) {
+			// console.log(component, value, !!value)
+
+			if (typeof value !== 'undefined') {
 				const method = 'compile' + Str.ucfirst(component)
 				if (typeof (this as any)[method] === 'function') {
 					// console.log(method, (query as any)[component])
-					sql[component] = (this as any)[method](query, (query as any)[component])
+					sql[component] = (this as any)[method](query, value)
 				} else {
 					console.log(`QueryGrammar: ${method}`)
 				}
@@ -355,11 +356,11 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile a "between" having clause.
 	 */
 	protected compileHavingBetween(having: any): string {
-		const between = having.not ? 'not between' : 'between'
+		const between = having.not ? 'NOT BETWEEN' : 'BETWEEN'
 		const column = this.wrap(having.column)
 		const min = this.parameter(having.values[0])
 		const max = this.parameter(having.values[having.values.length - 1])
-		return having.bool + ' ' + column + ' ' + between + ' ' + min + ' and ' + max
+		return having.bool + ' ' + column + ' ' + between + ' ' + min + ' AND ' + max
 	}
 
 	/**
@@ -501,6 +502,13 @@ export class QueryGrammar extends BaseGrammar {
 	 */
 	prepareBindingsForDelete(bindings: Bindings): any[] {
 		return new Collection(bindings).all()
+	}
+
+	/**
+	 * Compile the lock into SQL.
+	 */
+	protected compileLock(query: QueryObj, value: string | boolean): string {
+		return typeof value === 'string' ? value : ''
 	}
 
 	/**

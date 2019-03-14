@@ -1,6 +1,5 @@
 import { Bindings, Aggregate, WhereClause, Group, Order, UnionOrder } from './Components'
-import { JoinClause } from './QueryBuilder'
-import { OperatorType } from './Operators'
+import { Expression } from './Expression'
 
 export class QueryObj {
 	/**
@@ -24,7 +23,7 @@ export class QueryObj {
 	/**
 	 * The columns that should be returned.
 	 */
-	columns: string[] = []
+	columns: Array<string | Expression> = []
 
 	/**
 	 * Indicates if the query returns distinct results.
