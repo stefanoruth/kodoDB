@@ -1510,7 +1510,7 @@ describe('QueryBuilder', () => {
 		//     assertEquals(['foo', 1, 'bar'], builder.getRawBindings()['join']);
 	})
 
-	test.only('LeftJoinSub', () => {
+	test('LeftJoinSub', () => {
 		builder = getBuilder()
 		builder.from('users').leftJoinSub(getBuilder().from('contacts'), 'sub', 'users.id', '=', 'sub.id')
 		expect(builder.toSql()).toBe(
@@ -1526,9 +1526,155 @@ describe('QueryBuilder', () => {
 		)
 	})
 
-	test('RawExpressionsInSelect', () => {
-		builder = getBuilder()
-		builder.select(new Expression('substr(foo, 6)')).from('users')
-		expect(builder.toSql()).toBe('SELECT substr(foo, 6) FROM "users"')
-	})
+	// test('RawExpressionsInSelect', () => {
+	// 	builder = getBuilder()
+	// 	builder.select(new Expression('substr(foo, 6)')).from('users')
+	// 	expect(builder.toSql()).toBe('SELECT substr(foo, 6) FROM "users"')
+	// })
+
+	// test('ProvidingNullWithOperatorsBuildsCorrectly', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('foo', null);
+	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is null')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('foo', '=', null);
+	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is null')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('foo', '!=', null);
+	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is not null')
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('foo', '<>', null);
+	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is not null')
+	// })
+
+	// test('BindingOrder', () => {
+	//     expectedSql = 'select * from "users" inner join "othertable" on "bar" = ? where "registered" = ? group by "city" having "population" > ? order by match ("foo") against(?)';
+	//     expectedBindings = ['foo', 1, 3, 'bar'];
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').join('othertable', (join: any) => {
+	//         join.where('bar', '=', 'foo');
+	//     }).where('registered', 1).groupBy('city').having('population', '>', 3).orderByRaw('match ("foo") against(?)', ['bar']);
+	//     assertEquals(expectedSql, builder.toSql());
+	//     assertEquals(expectedBindings, builder.getBindings());
+	//     // order of statements reversed
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').orderByRaw('match ("foo") against(?)', ['bar']).having('population', '>', 3).groupBy('city').where('registered', 1).join('othertable', (join: any) => {
+	//         join.where('bar', '=', 'foo');
+	//     });
+	//     assertEquals(expectedSql, builder.toSql());
+	//     assertEquals(expectedBindings, builder.getBindings());
+	// })
+
+	// test('AddBindingWithArrayMergesBindings', () => {
+	//     builder = getBuilder();
+	//     builder.addBinding(['foo', 'bar']);
+	//     builder.addBinding(['baz']);
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	// })
+
+	// test('AddBindingWithArrayMergesBindingsInCorrectOrder', () => {
+	//     builder = getBuilder();
+	//     builder.addBinding(['bar', 'baz'], 'having');
+	//     builder.addBinding(['foo'], 'where');
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	// })
+
+	// test('MergeBuilders', () => {
+	//     builder = getBuilder();
+	//     builder.addBinding(['foo', 'bar']);
+	//     otherBuilder = getBuilder();
+	//     otherBuilder.addBinding(['baz']);
+	//     builder.mergeBindings(otherBuilder);
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	// })
+
+	// test('MergeBuildersBindingOrder', () => {
+	//     builder = getBuilder();
+	//     builder.addBinding('foo', 'where');
+	//     builder.addBinding('baz', 'having');
+	//     otherBuilder = getBuilder();
+	//     otherBuilder.addBinding('bar', 'where');
+	//     builder.mergeBindings(otherBuilder);
+	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	// })
+
+	// test('UppercaseLeadingBooleansAreRemoved', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'AND');
+	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
+	// })
+
+	// test('LowercaseLeadingBooleansAreRemoved', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'and');
+	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
+	// })
+
+	// test('CaseInsensitiveLeadingBooleansAreRemoved', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'And');
+	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
+	// })
+
+	// test('WhereRowValues', () => {
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').whereRowValues(['last_update', 'order_number'], '<', [1, 2]);
+	//     expect(builder.toSql()).toBe('select * from "orders" where ("last_update", "order_number") < (?, ?)')
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').where('company_id', 1).orWhereRowValues(['last_update', 'order_number'], '<', [1, 2]);
+	//     expect(builder.toSql()).toBe('select * from "orders" where "company_id" = ? or ("last_update", "order_number") < (?, ?)')
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').whereRowValues(['last_update', 'order_number'], '<', [1, new Expression('2')]);
+	//     expect(builder.toSql()).toBe('select * from "orders" where ("last_update", "order_number") < (?, 2)')
+	//     expect(builder.getBindings()).toEqual([1])
+	// })
+
+	// test('WhereRowValuesArityMismatch', () => {
+	//     expectException(InvalidArgumentException:: class);
+	//     expectExceptionMessage('The number of columns must match the number of values');
+	//     builder = getBuilder();
+	//     builder.select('*').from('orders').whereRowValues(['last_update'], '<', [1, 2]);
+	// })
+
+	// test('WhereJsonContainsSqlite', () => {
+	//     expectException(RuntimeException:: class);
+	//     builder = getSQLiteBuilder();
+	//     builder.select('*').from('users').whereJsonContains('options->languages', ['en']).toSql();
+	// })
+
+	// test('FromSub', () => {
+	//     builder = getBuilder();
+	//     builder.fromSub((query: any) => {
+	//         query.select(new Expression('max(last_seen_at) as last_seen_at')).from('user_sessions').where('foo', '=', '1');
+	//     }, 'sessions').where('bar', '<', '10');
+	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions" where "foo" = ?) as "sessions" where "bar" < ?')
+	//     expect(builder.getBindings()).toEqual(['1', '10'])
+	// })
+
+	// test('FromSubWithoutBindings', () => {
+	//     builder = getBuilder();
+	//     builder.fromSub((query: any) => {
+	//         query.select(new Expression('max(last_seen_at) as last_seen_at')).from('user_sessions');
+	//     }, 'sessions');
+	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"')
+	// })
+
+	// test('FromRaw', () => {
+	//     builder = getBuilder();
+	//     builder.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"'));
+	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"')
+	// })
+
+	// test('FromRawOnSqlServer', () => {
+	//     builder = getSqlServerBuilder();
+	//     builder.fromRaw('dbo.[SomeNameWithRoundBrackets (test)]');
+	//     expect(builder.toSql()).toBe('select * from dbo.[SomeNameWithRoundBrackets (test)]')
+	// })
+
+	// test('FromRawWithWhereOnTheMainQuery', () => {
+	//     builder = getBuilder();
+	//     builder.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at"')).where('last_seen_at', '>', '1520652582');
+	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at" where "last_seen_at" > ?')
+	//     expect(builder.getBindings()).toEqual(['1520652582'])
+	// })
 })
