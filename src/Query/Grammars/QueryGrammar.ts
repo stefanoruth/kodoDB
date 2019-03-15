@@ -1,8 +1,6 @@
-import { Expression } from '../Expression'
 import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
 import { QueryObj } from '../QueryObj'
-import { JoinClause } from '../QueryBuilder'
 import { WhereClause, Group, Bindings } from '../Components'
 
 export class QueryGrammar extends BaseGrammar {
@@ -126,8 +124,9 @@ export class QueryGrammar extends BaseGrammar {
 			.map((join: QueryObj) => {
 				const table = this.wrapTable(join.joinTable!)
 				const nestedJoins = join.joins.length > 0 ? ' ' + this.compileJoins(query, join.joins) : ' '
-				const tableAndNestedJoins = join.joins.length > 0 ? `${table}.${nestedJoins}` : table
-
+				console.log(nestedJoins)
+				const tableAndNestedJoins = join.joins.length > 0 ? `(${table}.${nestedJoins})` : table
+				console.log(tableAndNestedJoins)
 				return `${join.joinType!} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
 			})
 			.join(' ')
@@ -167,7 +166,9 @@ export class QueryGrammar extends BaseGrammar {
 					throw new Error(`Method is missing: ${method}`)
 				}
 
-				return where.bool + ' ' + (this as any)[method](query, where)
+				const sql = (this as any)[method](query, where)
+
+				return where.bool + ' ' + sql
 			})
 			.all()
 	}
@@ -178,8 +179,6 @@ export class QueryGrammar extends BaseGrammar {
 	protected concatenateWhereClauses(query: QueryObj, sql: string[]): string {
 		const conjunction = query.joinType && query.joinTable ? 'ON' : 'WHERE'
 
-		// $conjunction = $query instanceof JoinClause ? 'on' : 'where';
-		// return $conjunction.' '.$this -> removeLeadingBoolean(implode(' ', $sql));
 		return conjunction + ' ' + this.removeLeadingBoolean(sql.join(' '))
 	}
 
@@ -299,7 +298,7 @@ export class QueryGrammar extends BaseGrammar {
 		// Here we will calculate what portion of the string we need to remove. If this
 		// is a join clause query, we need to remove the "on" portion of the SQL and
 		// if it is a normal query we need to take the leading "where" of queries.
-		const offset = query instanceof JoinClause ? 3 : 6
+		const offset = query.joinType && query.joinTable ? 3 : 6
 
 		return `(${this.compileWheres(where.query!).substr(offset)})`
 	}

@@ -1299,8 +1299,8 @@ describe('QueryBuilder', () => {
 		builder
 			.select('*')
 			.from('users')
-			.leftJoin('contacts', (j: JoinClause) => {
-				j.on('users.id', '=', 'contacts.id').where(j2 => {
+			.leftJoin('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').where((j2: any) => {
 					j2.where('contacts.country', '=', 'US').orWhere('contacts.is_partner', '=', 1)
 				})
 			})
@@ -1313,11 +1313,11 @@ describe('QueryBuilder', () => {
 		builder
 			.select('*')
 			.from('users')
-			.leftJoin('contacts', (j: JoinClause) => {
+			.leftJoin('contacts', j => {
 				j.on('users.id', '=', 'contacts.id')
 					.where('contacts.is_active', '=', 1)
 					.orOn(j2 => {
-						j2.orWhere((j3: JoinClause) => {
+						j2.orWhere(j3 => {
 							j3.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type')
 						}).where(j3 => {
 							j3.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner')
@@ -1329,108 +1329,206 @@ describe('QueryBuilder', () => {
 		)
 		expect(builder.getBindings()).toEqual([1, 'UK', 'US'])
 	})
-	// test('JoinsWithAdvancedConditions', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id').where(j => {
-	//             j.whereRole('admin')
-	//                 .orWhereNull('contacts.disabled')
-	//                 .orWhereRaw('year(contacts.created_at) = 2016');
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and ("role" = ? or "contacts"."disabled" is null or year(contacts.created_at) = 2016)')
-	//     expect(builder.getBindings()).toEqual(['admin'])
-	// }
 
-	// )
-	// test('JoinsWithSubqueryCondition', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id').whereIn('contact_type_id', q => {
-	//             q.select('id').from('contact_types')
-	//                 .where('category_id', '1')
-	//                 .whereNull('deleted_at');
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and "contact_type_id" in (select "id" from "contact_types" where "category_id" = ? and "deleted_at" is null)')
-	//     expect(builder.getBindings()).toEqual(['1'])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id').whereExists(q => {
-	//             q.selectRaw('1').from('contact_types')
-	//                 .whereRaw('contact_types.id = contacts.contact_type_id')
-	//                 .where('category_id', '1')
-	//                 .whereNull('deleted_at');
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and exists (select 1 from "contact_types" where contact_types.id = contacts.contact_type_id and "category_id" = ? and "deleted_at" is null)')
-	//     expect(builder.getBindings()).toEqual(['1'])
-	// }
+	test('JoinsWithAdvancedConditions', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id').where((j2: any) => {
+					j2.where('role', 'admin')
+						.orWhereNull('contacts.disabled')
+						.orWhereRaw('year(contacts.created_at) = 2016')
+				})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND ("role" = ? OR "contacts"."disabled" IS NULL OR year(contacts.created_at) = 2016)'
+		)
+		expect(builder.getBindings()).toEqual(['admin'])
+	})
 
-	// )
-	// test('JoinsWithAdvancedSubqueryCondition', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id').whereExists(q => {
-	//             q.selectRaw('1').from('contact_types')
-	//                 .whereRaw('contact_types.id = contacts.contact_type_id')
-	//                 .where('category_id', '1')
-	//                 .whereNull('deleted_at')
-	//                 .whereIn('level_id', q => {
-	//                     q.select('id').from('levels')
-	//                         .where('is_active', true);
-	//                 });
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and exists (select 1 from "contact_types" where contact_types.id = contacts.contact_type_id and "category_id" = ? and "deleted_at" is null and "level_id" in (select "id" from "levels" where "is_active" = ?))')
-	//     expect(builder.getBindings()).toEqual(['1', true])
-	// }
+	test('JoinsWithSubqueryCondition', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id').whereIn('contact_type_id', (q: any) => {
+					q.select('id')
+						.from('contact_types')
+						.where('category_id', '1')
+						.whereNull('deleted_at')
+				})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contact_type_id" IN (SELECT "id" FROM "contact_types" WHERE "category_id" = ? AND "deleted_at" IS NULL)'
+		)
+		expect(builder.getBindings()).toEqual(['1'])
 
-	// )
-	// test('JoinsWithNestedJoins', () => {
-	//     builder = getBuilder();
-	//     builder.select('users.id', 'contacts.id', 'contact_types.id').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id').join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id');
-	//     });
-	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id"')
-	// }
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id').whereExists((q: any) => {
+					q.selectRaw('1')
+						.from('contact_types')
+						.whereRaw('contact_types.id = contacts.contact_type_id')
+						.where('category_id', '1')
+						.whereNull('deleted_at')
+				})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND EXISTS (SELECT 1 FROM "contact_types" WHERE contact_types.id = contacts.contact_type_id AND "category_id" = ? AND "deleted_at" IS NULL)'
+		)
+		expect(builder.getBindings()).toEqual(['1'])
+	})
 
-	// )
-	// test('JoinsWithMultipleNestedJoins', () => {
-	//     builder = getBuilder();
-	//     builder.select('users.id', 'contacts.id', 'contact_types.id', 'countrys.id', 'planets.id').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id')
-	//             .join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
-	//             .leftJoin('countrys', q => {
-	//                 q.on('contacts.country', '=', 'countrys.country')
-	//                     .join('planets', q => {
-	//                         q.on('countrys.planet_id', '=', 'planet.id')
-	//                             .where('planet.is_settled', '=', 1)
-	//                             .where('planet.population', '>=', 10000);
-	//                     });
-	//             });
-	//     });
-	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id", "countrys"."id", "planets"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id" left join ("countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? and "planet"."population" >= ?) on "contacts"."country" = "countrys"."country") on "users"."id" = "contacts"."id"')
-	//     expect(builder.getBindings()).toEqual(['1', 10000])
-	// }
+	test('JoinsWithAdvancedSubqueryCondition', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id').whereExists(q => {
+					q.selectRaw('1')
+						.from('contact_types')
+						.whereRaw('contact_types.id = contacts.contact_type_id')
+						.where('category_id', '1')
+						.whereNull('deleted_at')
+						.whereIn('level_id', (q2: any) => {
+							q2.select('id')
+								.from('levels')
+								.where('is_active', true)
+						})
+				})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND EXISTS (SELECT 1 FROM "contact_types" WHERE contact_types.id = contacts.contact_type_id AND "category_id" = ? AND "deleted_at" IS NULL AND "level_id" IN (SELECT "id" FROM "levels" WHERE "is_active" = ?))'
+		)
+		expect(builder.getBindings()).toEqual(['1', true])
+	})
 
-	// )
-	// test('JoinsWithNestedJoinWithAdvancedSubqueryCondition', () => {
-	//     builder = getBuilder();
-	//     builder.select('users.id', 'contacts.id', 'contact_types.id').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', 'contacts.id')
-	//             .join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
-	//             .whereExists(q => {
-	//                 q.select('*').from('countrys')
-	//                     .whereColumn('contacts.country', '=', 'countrys.country')
-	//                     .join('planets', q => {
-	//                         q.on('countrys.planet_id', '=', 'planet.id')
-	//                             .where('planet.is_settled', '=', 1);
-	//                     })
-	//                     .where('planet.population', '>=', 10000);
-	//             });
-	//     });
-	//     expect(builder.toSql()).toBe('select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id" and exists (select * from "countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? where "contacts"."country" = "countrys"."country" and "planet"."population" >= ?)')
-	//     expect(builder.getBindings()).toEqual(['1', 10000])
-	// })
+	test('JoinsWithNestedJoins', () => {
+		builder = getBuilder()
+		builder
+			.select('users.id', 'contacts.id', 'contact_types.id')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id').join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
+			})
+		// expect(builder.toSql()).toBe(
+		// 	'SELECT "users"."id", "contacts"."id", "contact_types"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id") ON "users"."id" = "contacts"."id"'
+		// )
+	})
+
+	test('JoinsWithMultipleNestedJoins', () => {
+		builder = getBuilder()
+		builder
+			.select('users.id', 'contacts.id', 'contact_types.id', 'countrys.id', 'planets.id')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id')
+					.join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
+					.leftJoin('countrys', j2 => {
+						j2.on('contacts.country', '=', 'countrys.country').join('planets', j3 => {
+							j3.on('countrys.planet_id', '=', 'planet.id')
+								.where('planet.is_settled', '=', 1)
+								.where('planet.population', '>=', 10000)
+						})
+					})
+			})
+		// expect(builder.toSql()).toBe(
+		// 	'SELECT "users"."id", "contacts"."id", "contact_types"."id", "countrys"."id", "planets"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id" LEFT JOIN ("countrys" INNER JOIN "planets" ON "countrys"."planet_id" = "planet"."id" AND "planet"."is_settled" = ? AND "planet"."population" >= ?) ON "contacts"."country" = "countrys"."country") ON "users"."id" = "contacts"."id"'
+		// )
+		expect(builder.getBindings()).toEqual([1, 10000])
+	})
+
+	test('JoinsWithNestedJoinWithAdvancedSubqueryCondition', () => {
+		builder = getBuilder()
+		builder
+			.select('users.id', 'contacts.id', 'contact_types.id')
+			.from('users')
+			.leftJoin('contacts', j => {
+				j.on('users.id', 'contacts.id')
+					.join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
+					.whereExists((q: any) => {
+						q.select('*')
+							.from('countrys')
+							.whereColumn('contacts.country', '=', 'countrys.country')
+							.join('planets', (q2: any) => {
+								q2.on('countrys.planet_id', '=', 'planet.id').where('planet.is_settled', '=', 1)
+							})
+							.where('planet.population', '>=', 10000)
+					})
+			})
+		// expect(builder.toSql()).toBe(
+		// 	'select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id" and exists (select * from "countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? where "contacts"."country" = "countrys"."country" and "planet"."population" >= ?)'
+		// )
+		expect(builder.getBindings()).toEqual([1, 10000])
+	})
+
+	test('JoinSub', () => {
+		builder = getBuilder()
+		builder.from('users').joinSub('select * from "contacts"', 'sub', 'users.id', '=', 'sub.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+		)
+
+		// builder = getBuilder()
+		// builder.from('users').joinSub(
+
+		// 	(q: any) => {
+		// 		q.from('contacts')
+		// 	},
+		// 	'sub',
+		// 	'users.id',
+		// 	'=',
+		// 	'sub.id'
+		// )
+		// expect(builder.toSql()).toBe(
+		// 	'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+		// )
+
+		builder = getBuilder()
+		builder.from('users').joinSub(getBuilder().from('contacts'), 'sub', 'users.id', '=', 'sub.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+		)
+
+		//     builder = getBuilder();
+		//     sub1 = getBuilder().from('contacts').where('name', 'foo');
+		//     sub2 = getBuilder().from('contacts').where('name', 'bar');
+		//     builder.from('users')
+		//         .joinSub(sub1, 'sub1', 'users.id', '=', 1, 'inner', true)
+		//         .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
+		//     expected = 'select * from "users" ';
+		//     expected.= 'inner join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
+		//     expected.= 'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
+		//     assertEquals(expected, builder.toSql());
+		//     assertEquals(['foo', 1, 'bar'], builder.getRawBindings()['join']);
+	})
+
+	test.only('LeftJoinSub', () => {
+		builder = getBuilder()
+		builder.from('users').leftJoinSub(getBuilder().from('contacts'), 'sub', 'users.id', '=', 'sub.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+		)
+	})
+
+	test('RightJoinSub', () => {
+		builder = getBuilder()
+		builder.from('users').rightJoinSub(getBuilder().from('contacts'), 'sub', 'users.id', '=', 'sub.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" RIGHT JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+		)
+	})
+
+	test('RawExpressionsInSelect', () => {
+		builder = getBuilder()
+		builder.select(new Expression('substr(foo, 6)')).from('users')
+		expect(builder.toSql()).toBe('SELECT substr(foo, 6) FROM "users"')
+	})
 })
