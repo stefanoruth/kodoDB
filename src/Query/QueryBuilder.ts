@@ -51,7 +51,7 @@ export class QueryBuilder {
 	/**
 	 * Set the columns to be selected.
 	 */
-	select(column: Column = ['*'], ...columns: string[]): QueryBuilder {
+	select(column: Column = ['*'], ...columns: string[]): this {
 		this.queryObj.columns = column instanceof Array ? column : [column, ...columns]
 
 		return this
@@ -69,7 +69,7 @@ export class QueryBuilder {
 	/**
 	 * Add a new "raw" select expression to the query.
 	 */
-	selectRaw(expression: string, bindings: any[] = []): QueryBuilder {
+	selectRaw(expression: string, bindings: any[] = []): this {
 		this.addSelect(new Expression(expression))
 		if (bindings) {
 			this.addBinding(bindings, 'select')
@@ -80,7 +80,7 @@ export class QueryBuilder {
 	/**
 	 * Makes "from" fetch from a subquery.n
 	 */
-	fromSub(query: QueryBuilder | string, as: string): QueryBuilder {
+	fromSub(query: QueryBuilder | string, as: string): this {
 		const [subQuery, bindings] = this.createSub(query)
 		return this.fromRaw(`(${subQuery}) as ${this.grammar.wrap(as)}`, bindings)
 	}
@@ -88,7 +88,7 @@ export class QueryBuilder {
 	/**
 	 * Add a raw from clause to the query.
 	 */
-	fromRaw(expression: string, bindings: any[] = []): QueryBuilder {
+	fromRaw(expression: string, bindings: any[] = []): this {
 		this.queryObj.from = new Expression(expression).toString().toString()
 		this.addBinding(bindings, 'from')
 		return this
@@ -129,7 +129,7 @@ export class QueryBuilder {
 	/**
 	 * Add a new select column to the query.
 	 */
-	addSelect(column: Column, ...columns: string[]): QueryBuilder {
+	addSelect(column: Column, ...columns: string[]): this {
 		column = column instanceof Array ? column : [column, ...columns]
 
 		this.queryObj.columns = this.queryObj.columns.concat(column)
@@ -140,7 +140,7 @@ export class QueryBuilder {
 	/**
 	 * Force the query to only return distinct results.
 	 */
-	distinct(): QueryBuilder {
+	distinct(): this {
 		this.queryObj.distinct = true
 
 		return this
@@ -149,7 +149,7 @@ export class QueryBuilder {
 	/**
 	 * Set the table which the query is targeting.
 	 */
-	from(table: string): QueryBuilder {
+	from(table: string): this {
 		this.queryObj.from = table
 
 		return this
@@ -165,8 +165,8 @@ export class QueryBuilder {
 		second?: string,
 		type: string = 'INNER',
 		where: boolean = false
-	): QueryBuilder {
-		const join = this.newJoinClause(this, type, table.toString().toString())
+	): this {
+		const join = this.newJoinClause(this, type.toUpperCase(), table.toString().toString())
 		// If the first "column" of the join is really a Closure instance the developer
 		// is trying to build a join with a complex "on" clause containing more than
 		// one condition, so we'll add the join and call a Closure with the query.
@@ -190,13 +190,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "join where" clause to the query.
 	 */
-	joinWhere(
-		table: string,
-		first: QueryFn | string,
-		operator: OperatorType,
-		second: string,
-		type = 'INNER'
-	): QueryBuilder {
+	joinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string, type = 'INNER'): this {
 		return this.join(table, first, operator, second, type, true)
 	}
 
@@ -211,9 +205,9 @@ export class QueryBuilder {
 		second?: string,
 		type = 'INNER', // TODO type interface for Join types
 		where: boolean = false
-	): QueryBuilder {
+	): this {
 		const [subQuery, bindings] = this.createSub(query)
-		const expression = `(${query}) AS ${this.grammar.wrap(as)}`
+		const expression = `(${subQuery}) AS ${this.grammar.wrap(as)}`
 		this.addBinding(bindings, 'join')
 		return this.join(new Expression(expression), first, operator, second, type, where)
 	}
@@ -221,14 +215,14 @@ export class QueryBuilder {
 	/**
 	 * Add a left join to the query.
 	 */
-	leftJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+	leftJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): this {
 		return this.join(table, first, operator, second, 'LEFT')
 	}
 
 	/**
 	 * Add a "join where" clause to the query.
 	 */
-	leftJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): QueryBuilder {
+	leftJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): this {
 		return this.joinWhere(table, first, operator, second, 'LEFT')
 	}
 
@@ -241,21 +235,21 @@ export class QueryBuilder {
 		first: QueryFn | string,
 		operator?: OperatorType,
 		second?: string
-	): QueryBuilder {
+	): this {
 		return this.joinSub(query, as, first, operator, second, 'LEFT')
 	}
 
 	/**
 	 * Add a right join to the query.
 	 */
-	rightJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+	rightJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): this {
 		return this.join(table, first, operator, second, 'RIGHT')
 	}
 
 	/**
 	 * Add a "right join where" clause to the query.
 	 */
-	rightJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): QueryBuilder {
+	rightJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): this {
 		return this.joinWhere(table, first, operator, second, 'RIGHT')
 	}
 
@@ -268,14 +262,14 @@ export class QueryBuilder {
 		first: QueryFn | string,
 		operator?: OperatorType,
 		second?: string
-	): QueryBuilder {
+	): this {
 		return this.joinSub(query, as, first, operator, second, 'RIGHT')
 	}
 
 	/**
 	 * Add a "cross join" clause to the query.
 	 */
-	crossJoin(table: string, first?: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+	crossJoin(table: string, first?: QueryFn | string, operator?: OperatorType, second?: string): this {
 		if (first) {
 			return this.join(table, first, operator, second, 'CROSS')
 		}
@@ -293,7 +287,7 @@ export class QueryBuilder {
 	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: Column | QueryFn | any[], operator?: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	where(column: Column | QueryFn | any[], operator?: any, value?: any, bool: WhereBoolean = 'AND'): this {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -363,7 +357,7 @@ export class QueryBuilder {
 	/**
 	 * Add an array of where clauses to the query.
 	 */
-	protected addArrayOfWheres(columns: any[], bool: WhereBoolean, method: string = 'where'): QueryBuilder {
+	protected addArrayOfWheres(columns: any[], bool: WhereBoolean, method: string = 'where'): this {
 		return this.whereNested(query => {
 			columns.forEach((value, key) => {
 				if (value instanceof Array) {
@@ -408,7 +402,7 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where" clause to the query.
 	 */
-	orWhere(column: Column | QueryFn, operator?: any, value?: any): QueryBuilder {
+	orWhere(column: Column | QueryFn, operator?: any, value?: any): this {
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
 
 		return this.where(column, operator, value, 'OR')
@@ -417,12 +411,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "where" clause comparing two columns to the query.
 	 */
-	whereColumn(
-		first: string | string[] | string[][],
-		operator?: any,
-		second?: any,
-		bool: WhereBoolean = 'AND'
-	): QueryBuilder {
+	whereColumn(first: string | string[] | string[][], operator?: any, second?: any, bool: WhereBoolean = 'AND'): this {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -448,14 +437,14 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where" clause comparing two columns to the query.
 	 */
-	orWhereColumn(first: string | string[] | string[][], operator?: any, second?: any): QueryBuilder {
+	orWhereColumn(first: string | string[] | string[][], operator?: any, second?: any): this {
 		return this.whereColumn(first, operator, second, 'OR')
 	}
 
 	/**
 	 * Add a raw where clause to the query.
 	 */
-	whereRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): this {
 		this.queryObj.wheres.push({ type: 'Raw', sql, bool })
 		this.addBinding(bindings, 'where')
 
@@ -465,14 +454,14 @@ export class QueryBuilder {
 	/**
 	 * Add a raw or where clause to the query.
 	 */
-	orWhereRaw(sql: string, bindings: any[]): QueryBuilder {
+	orWhereRaw(sql: string, bindings: any[]): this {
 		return this.whereRaw(sql, bindings, 'OR')
 	}
 
 	/**
 	 * Add a "where in" clause to the query.
 	 */
-	whereIn(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereIn(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = not ? 'NotIn' : 'In'
 
 		// If the value is a query builder instance we will assume the developer wants to
@@ -504,27 +493,27 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where in" clause to the query.
 	 */
-	orWhereIn(column: Column, values: any): QueryBuilder {
+	orWhereIn(column: Column, values: any): this {
 		return this.whereIn(column, values, 'OR')
 	}
 
 	/**
 	 * Add a "where not in" clause to the query.
 	 */
-	whereNotIn(column: Column, values: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereNotIn(column: Column, values: any, bool: WhereBoolean = 'AND'): this {
 		return this.whereIn(column, values, bool, true)
 	}
 	/**
 	 * Add an "or where not in" clause to the query.
 	 */
-	orWhereNotIn(column: Column, values: any): QueryBuilder {
+	orWhereNotIn(column: Column, values: any): this {
 		return this.whereNotIn(column, values, 'OR')
 	}
 
 	/**
 	 * Add a where in with a sub-select to the query.
 	 */
-	protected whereInSub(column: Column, callback: QueryFn, bool: WhereBoolean, not: boolean): QueryBuilder {
+	protected whereInSub(column: Column, callback: QueryFn, bool: WhereBoolean, not: boolean): this {
 		const type = not ? 'NotInSub' : 'InSub'
 		// To create the exists sub-select, we will actually create a query and call the
 		// provided callback with the query so the developer may set any of the query
@@ -541,7 +530,7 @@ export class QueryBuilder {
 	/**
 	 * Add an external sub-select to the query.
 	 */
-	protected whereInExistingQuery(column: Column, query: QueryBuilder, bool: WhereBoolean, not: boolean): QueryBuilder {
+	protected whereInExistingQuery(column: Column, query: QueryBuilder, bool: WhereBoolean, not: boolean): this {
 		const type = not ? 'NotInSub' : 'InSub'
 
 		this.queryObj.wheres.push({ type, column, query: query.queryObj, bool })
@@ -553,7 +542,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "where in raw" clause for integer values to the query.
 	 */
-	whereIntegerInRaw(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereIntegerInRaw(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = not ? 'NotInRaw' : 'InRaw'
 
 		values = values.map(value => {
@@ -568,14 +557,14 @@ export class QueryBuilder {
 	/**
 	 * Add a "where not in raw" clause for integer values to the query.
 	 */
-	whereIntegerNotInRaw(column: Column, values: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereIntegerNotInRaw(column: Column, values: any, bool: WhereBoolean = 'AND'): this {
 		return this.whereIntegerInRaw(column, values, bool, true)
 	}
 
 	/**
 	 * Add a "where null" clause to the query.
 	 */
-	whereNull(column: Column, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereNull(column: Column, bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = not ? 'NotNull' : 'Null'
 		this.queryObj.wheres.push({ type, column, bool })
 
@@ -584,21 +573,21 @@ export class QueryBuilder {
 	/**
 	 * Add an "or where null" clause to the query.
 	 */
-	orWhereNull(column: Column): QueryBuilder {
+	orWhereNull(column: Column): this {
 		return this.whereNull(column, 'OR')
 	}
 
 	/**
 	 * Add a "where not null" clause to the query.
 	 */
-	whereNotNull(column: Column, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereNotNull(column: Column, bool: WhereBoolean = 'AND'): this {
 		return this.whereNull(column, bool, true)
 	}
 
 	/**
 	 * Add a "where date" statement to the query.
 	 */
-	whereDate(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereDate(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
 
 		if (value instanceof Date) {
@@ -617,7 +606,7 @@ export class QueryBuilder {
 		operator: string,
 		value?: any,
 		bool: WhereBoolean = 'AND'
-	): QueryBuilder {
+	): this {
 		this.queryObj.wheres.push({ column, type, bool, operator, values: value })
 
 		if (!(value instanceof Expression)) {
@@ -630,7 +619,7 @@ export class QueryBuilder {
 	/**
 	 * Add a where between statement to the query.
 	 */
-	whereBetween(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereBetween(column: Column, values: any[], bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = 'Between'
 
 		this.queryObj.wheres.push({ type, column, values, bool, not })
@@ -642,35 +631,35 @@ export class QueryBuilder {
 	/**
 	 * Add an or where between statement to the query.
 	 */
-	orWhereBetween(column: Column, values: any[]): QueryBuilder {
+	orWhereBetween(column: Column, values: any[]): this {
 		return this.whereBetween(column, values, 'OR')
 	}
 
 	/**
 	 * Add a where not between statement to the query.
 	 */
-	whereNotBetween(column: Column, values: any[], bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereNotBetween(column: Column, values: any[], bool: WhereBoolean = 'AND'): this {
 		return this.whereBetween(column, values, bool, true)
 	}
 
 	/**
 	 * Add an or where not between statement to the query.
 	 */
-	orWhereNotBetween(column: Column, values: any[]): QueryBuilder {
+	orWhereNotBetween(column: Column, values: any[]): this {
 		return this.whereNotBetween(column, values, 'OR')
 	}
 
 	/**
 	 * Add an "or where not null" clause to the query.
 	 */
-	orWhereNotNull(column: Column): QueryBuilder {
+	orWhereNotNull(column: Column): this {
 		return this.whereNotNull(column, 'OR')
 	}
 
 	/**
 	 * Add a nested where statement to the query.
 	 */
-	whereNested(callback: QueryFn, bool: WhereBoolean = 'AND'): QueryBuilder {
+	whereNested(callback: QueryFn, bool: WhereBoolean = 'AND'): this {
 		const query = this.forNestedWhere()
 
 		callback(query)
@@ -688,7 +677,7 @@ export class QueryBuilder {
 	/**
 	 * Add another query builder as a nested where to the query builder.
 	 */
-	addNestedWhereQuery(query: QueryBuilder, bool: WhereBoolean = 'AND'): QueryBuilder {
+	addNestedWhereQuery(query: QueryBuilder, bool: WhereBoolean = 'AND'): this {
 		if (query.queryObj.wheres.length) {
 			const type = 'Nested'
 			this.queryObj.wheres.push({ type, query: query.queryObj, bool })
@@ -701,7 +690,7 @@ export class QueryBuilder {
 	/**
 	 * Add a full sub-select to the query.
 	 */
-	protected whereSub(column: Column, operator: string, callback: QueryFn, bool: WhereBoolean): QueryBuilder {
+	protected whereSub(column: Column, operator: string, callback: QueryFn, bool: WhereBoolean): this {
 		const type = 'Sub'
 		// Once we have the query instance we can simply execute it so it can add all
 		// of the sub-select's conditions to itself, and then we can cache it off
@@ -719,7 +708,7 @@ export class QueryBuilder {
 	/**
 	 * Add an exists clause to the query.
 	 */
-	whereExists(callback: QueryFn, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	whereExists(callback: QueryFn, bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const query = this.forSubQuery()
 		// Similar to the sub-select clause, we will create a new query instance so
 		// the developer may cleanly specify the entire exists query and we will
@@ -732,7 +721,7 @@ export class QueryBuilder {
 	/**
 	 * Add an or exists clause to the query.
 	 */
-	orWhereExists(callback: QueryFn, not: boolean = false): QueryBuilder {
+	orWhereExists(callback: QueryFn, not: boolean = false): this {
 		return this.whereExists(callback, 'OR', not)
 	}
 
@@ -746,14 +735,14 @@ export class QueryBuilder {
 	/**
 	 * Add a where not exists clause to the query.
 	 */
-	orWhereNotExists(callback: QueryFn): QueryBuilder {
+	orWhereNotExists(callback: QueryFn): this {
 		return this.orWhereExists(callback, true)
 	}
 
 	/**
 	 * Add an exists clause to the query.
 	 */
-	addWhereExistsQuery(query: QueryBuilder, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	addWhereExistsQuery(query: QueryBuilder, bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = not ? 'NotExists' : 'Exists'
 		this.queryObj.wheres.push({ type, query: query.queryObj, bool })
 		this.addBinding(query.getBindings(), 'where')
@@ -764,7 +753,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "group by" clause to the query.
 	 */
-	groupBy(...groups: any[]): QueryBuilder {
+	groupBy(...groups: any[]): this {
 		if (groups.length === 1 && groups[0] instanceof Array) {
 			groups = groups[0]
 		}
@@ -779,7 +768,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "having" clause to the query.
 	 */
-	having(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	having(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
 		const type = 'Basic'
 			// Here we will make some assumptions about the operator. If only 2 values are
 			// passed to the method, we will assume that the operator is an equals sign
@@ -804,7 +793,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "or having" clause to the query.
 	 */
-	orHaving(column: Column, operator: any, value?: any): QueryBuilder {
+	orHaving(column: Column, operator: any, value?: any): this {
 		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
 		return this.having(column, operator, value, 'OR')
 	}
@@ -812,7 +801,7 @@ export class QueryBuilder {
 	/**
 	 * Add a "having between " clause to the query.
 	 */
-	havingBetween(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+	havingBetween(column: Column, values: any, bool: WhereBoolean = 'AND', not: boolean = false): this {
 		const type = 'between'
 		this.queryObj.havings.push({ type, column, values, bool, not })
 		this.addBinding(this.cleanBindings(values), 'having')
@@ -822,7 +811,7 @@ export class QueryBuilder {
 	/**
 	 * Add a raw having clause to the query.
 	 */
-	havingRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): QueryBuilder {
+	havingRaw(sql: string, bindings: any[] = [], bool: WhereBoolean = 'AND'): this {
 		const type = 'Raw'
 		this.queryObj.havings.push({ type, sql, bool })
 		this.addBinding(bindings, 'having')
@@ -832,14 +821,14 @@ export class QueryBuilder {
 	/**
 	 * Add a raw or having clause to the query.
 	 */
-	orHavingRaw(sql: string, bindings: any[] = []): QueryBuilder {
+	orHavingRaw(sql: string, bindings: any[] = []): this {
 		return this.havingRaw(sql, bindings, 'OR')
 	}
 
 	/**
 	 * Add an "order by" clause to the query.
 	 */
-	orderBy(column: string, direction: OrderDirection = 'asc'): QueryBuilder {
+	orderBy(column: string, direction: OrderDirection = 'asc'): this {
 		const order = {
 			column,
 			direction: direction.toUpperCase(),
@@ -857,34 +846,34 @@ export class QueryBuilder {
 	/**
 	 * Add a descending "order by" clause to the query.
 	 */
-	orderByDesc(column: string): QueryBuilder {
+	orderByDesc(column: string): this {
 		return this.orderBy(column, 'desc')
 	}
 
 	/**
 	 * Add an "order by" clause for a timestamp to the query.
 	 */
-	latest(column: string = 'created_at'): QueryBuilder {
+	latest(column: string = 'created_at'): this {
 		return this.orderBy(column, 'desc')
 	}
 
 	/**
 	 * Add an "order by" clause for a timestamp to the query.
 	 */
-	oldest(column: string = 'created_at'): QueryBuilder {
+	oldest(column: string = 'created_at'): this {
 		return this.orderBy(column, 'asc')
 	}
 
 	/**
 	 * Put the query's results in random order.
 	 */
-	inRandomOrder(seed: string = ''): QueryBuilder {
+	inRandomOrder(seed: string = ''): this {
 		return this.orderByRaw(this.grammar.compileRandom(seed))
 	}
 	/**
 	 * Add a raw "order by" clause to the query.
 	 */
-	orderByRaw(sql: string, bindings: any[] = []): QueryBuilder {
+	orderByRaw(sql: string, bindings: any[] = []): this {
 		const type = 'Raw'
 
 		if (this.queryObj.unions.length > 0) {
@@ -900,14 +889,14 @@ export class QueryBuilder {
 	/**
 	 * Alias to set the "offset" value of the query.
 	 */
-	skip(value: number): QueryBuilder {
+	skip(value: number): this {
 		return this.offset(value)
 	}
 
 	/**
 	 * Set the "offset" value of the query.
 	 */
-	offset(value: number): QueryBuilder {
+	offset(value: number): this {
 		if (this.queryObj.unions.length > 0) {
 			this.queryObj.unionOffset = Math.max(0, value)
 		} else {
@@ -920,14 +909,14 @@ export class QueryBuilder {
 	/**
 	 * Alias to set the "limit" value of the query.
 	 */
-	take(value: number): QueryBuilder {
+	take(value: number): this {
 		return this.limit(value)
 	}
 
 	/**
 	 * Set the "limit" value of the query.
 	 */
-	limit(value: number): QueryBuilder {
+	limit(value: number): this {
 		if (value < 0) {
 			return this
 		}
@@ -944,14 +933,14 @@ export class QueryBuilder {
 	/**
 	 * Set the limit and offset for a given page.
 	 */
-	forPage(page: number, perPage: number = 15): QueryBuilder {
+	forPage(page: number, perPage: number = 15): this {
 		return this.skip((page - 1) * perPage).take(perPage)
 	}
 
 	/**
 	 * Constrain the query to the next "page" of results after a given ID.
 	 */
-	forPageAfterId(perPage: number = 15, lastId: undefined | number = 0, column: string = 'id'): QueryBuilder {
+	forPageAfterId(perPage: number = 15, lastId: undefined | number = 0, column: string = 'id'): this {
 		this.queryObj.orders = this.removeExistingOrdersFor(column)
 		if (typeof lastId !== 'undefined') {
 			this.where(column, '>', lastId)
@@ -978,7 +967,7 @@ export class QueryBuilder {
 	/**
 	 * Add a union statement to the query.
 	 */
-	union(query: QueryBuilder, all: boolean = false): QueryBuilder {
+	union(query: QueryBuilder, all: boolean = false): this {
 		if (typeof query === 'function') {
 			const subQuery: (query: QueryBuilder) => void = query
 			query = this.newQuery()
@@ -995,7 +984,7 @@ export class QueryBuilder {
 	/**
 	 * Add a union all statement to the query.
 	 */
-	unionAll(query: QueryBuilder): QueryBuilder {
+	unionAll(query: QueryBuilder): this {
 		return this.union(query, true)
 	}
 
@@ -1125,7 +1114,7 @@ export class QueryBuilder {
 	/**
 	 * Set the aggregate property without running the query.
 	 */
-	protected setAggregate(functionName: string, columns: string[]): QueryBuilder {
+	protected setAggregate(functionName: string, columns: string[]): this {
 		this.queryObj.aggregate = { functionName, columns }
 
 		if (this.queryObj.groups.length === 0) {
@@ -1224,7 +1213,7 @@ export class QueryBuilder {
 	/**
 	 * Add a binding to the query.
 	 */
-	addBinding(value: any, type: BindingType = 'where'): QueryBuilder {
+	addBinding(value: any, type: BindingType = 'where'): this {
 		if (BindingKeys.indexOf(type) === -1) {
 			throw new Error(`Invalid binding type: {type}.`)
 		}
@@ -1275,7 +1264,7 @@ export class QueryBuilder {
 	 * @param  array  properties
 	 * @return static
 	 */
-	cloneWithout(properties: string[]): QueryBuilder {
+	cloneWithout(properties: string[]): this {
 		return tap({ ...this }, (clone: any) => {
 			properties.forEach(property => {
 				clone[property] = null
@@ -1289,7 +1278,7 @@ export class QueryBuilder {
 	 * @param  array  except
 	 * @return static
 	 */
-	cloneWithoutBindings(except: string[]): QueryBuilder {
+	cloneWithoutBindings(except: string[]): this {
 		return tap({ ...this }, (clone: any) => {
 			except.forEach(type => {
 				clone.bindings[type] = []
@@ -1366,7 +1355,7 @@ export class JoinClause extends QueryBuilder {
 	 *
 	 * on `contacts`.`user_id` = `users`.`id` and `contacts`.`info_id` = `info`.`id`
 	 */
-	on(first: string, operator?: string, second?: string, bool: WhereBoolean = 'AND') {
+	on(first: QueryFn | string, operator?: string, second?: string, bool: WhereBoolean = 'AND'): JoinClause {
 		if (typeof first === 'function') {
 			return this.whereNested(first, bool)
 		}
@@ -1376,7 +1365,7 @@ export class JoinClause extends QueryBuilder {
 	/**
 	 * Add an "or on" clause to the join.
 	 */
-	orOn(first: string, operator?: string, second?: string) {
+	orOn(first: QueryFn | string, operator?: string, second?: string): JoinClause {
 		return this.on(first, operator, second, 'OR')
 	}
 

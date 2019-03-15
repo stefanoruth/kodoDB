@@ -1,4 +1,4 @@
-import { QueryBuilder } from '../src/Query/QueryBuilder'
+import { QueryBuilder, JoinClause } from '../src/Query/QueryBuilder'
 import { QueryGrammar } from '../src/Query/Grammars/QueryGrammar'
 import { QueryProcessor } from '../src/Query/Processors/QueryProcessor'
 import { Mock } from 'ts-mockery'
@@ -1103,141 +1103,232 @@ describe('QueryBuilder', () => {
 		)
 		expect(builder.getBindings()).toEqual(['bar', 'foo'])
 	})
-	// test('CrossJoins', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('sizes').crossJoin('colors');
-	//     expect(builder.toSql()).toBe('select * from "sizes" cross join "colors"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('tableB').join('tableA', 'tableA.column1', '=', 'tableB.column2', 'cross');
-	//     expect(builder.toSql()).toBe('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('tableB').crossJoin('tableA', 'tableA.column1', '=', 'tableB.column2');
-	//     expect(builder.toSql()).toBe('select * from "tableB" cross join "tableA" on "tableA"."column1" = "tableB"."column2"')
-	// }
 
-	// )
-	// test('ComplexJoin', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').orOn('users.name', '=', 'contacts.name');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "users"."name" = "contacts"."name"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.where('users.id', '=', 'foo').orWhere('users.name', '=', 'bar');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = ? or "users"."name" = ?')
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
-	//     // Run the assertions again
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = ? or "users"."name" = ?')
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
-	// }
+	test('CrossJoins', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('sizes')
+			.crossJoin('colors')
+		expect(builder.toSql()).toBe('SELECT * FROM "sizes" CROSS JOIN "colors"')
 
-	// )
-	// test('JoinWhereNull', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').whereNull('contacts.deleted_at');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."deleted_at" is null')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').orWhereNull('contacts.deleted_at');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."deleted_at" is null')
-	// }
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('tableB')
+			.join('tableA', 'tableA.column1', '=', 'tableB.column2', 'cross')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "tableB" CROSS JOIN "tableA" ON "tableA"."column1" = "tableB"."column2"'
+		)
 
-	// )
-	// test('JoinWhereNotNull', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').whereNotNull('contacts.deleted_at');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."deleted_at" is not null')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').orWhereNotNull('contacts.deleted_at');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."deleted_at" is not null')
-	// }
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('tableB')
+			.crossJoin('tableA', 'tableA.column1', '=', 'tableB.column2')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "tableB" CROSS JOIN "tableA" ON "tableA"."column1" = "tableB"."column2"'
+		)
+	})
 
-	// )
-	// test('JoinWhereIn', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', [48, 'baz', null]);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" in (?, ?, ?)')
-	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', [48, 'baz', null]);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" in (?, ?, ?)')
-	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
-	// }
+	test('ComplexJoin', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').orOn('users.name', '=', 'contacts.name')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "users"."name" = "contacts"."name"'
+		)
 
-	// )
-	// test('JoinWhereInSubquery', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         q = getBuilder();
-	//         q.select('name').from('contacts').where('name', 'baz');
-	//         j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', q);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" in (select "name" from "contacts" where "name" = ?)')
-	//     expect(builder.getBindings()).toEqual(['baz'])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         q = getBuilder();
-	//         q.select('name').from('contacts').where('name', 'baz');
-	//         j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', q);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" in (select "name" from "contacts" where "name" = ?)')
-	//     expect(builder.getBindings()).toEqual(['baz'])
-	// }
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.where('users.id', '=', 'foo').orWhere('users.name', '=', 'bar')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = ? OR "users"."name" = ?'
+		)
+		expect(builder.getBindings()).toEqual(['foo', 'bar'])
+		// Run the assertions again
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = ? OR "users"."name" = ?'
+		)
+		expect(builder.getBindings()).toEqual(['foo', 'bar'])
+	})
 
-	// )
-	// test('JoinWhereNotIn', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').whereNotIn('contacts.name', [48, 'baz', null]);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" and "contacts"."name" not in (?, ?, ?)')
-	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').orWhereNotIn('contacts.name', [48, 'baz', null]);
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" or "contacts"."name" not in (?, ?, ?)')
-	//     expect(builder.getBindings()).toEqual([48, 'baz', null])
-	// }
+	test('JoinWhereNull', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').whereNull('contacts.deleted_at')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."deleted_at" IS NULL'
+		)
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').orWhereNull('contacts.deleted_at')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "contacts"."deleted_at" IS NULL'
+		)
+	})
 
-	// )
-	// test('JoinsWithNestedConditions', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').where(j => {
-	//             j.where('contacts.country', '=', 'US').orWhere('contacts.is_partner', '=', 1);
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and ("contacts"."country" = ? or "contacts"."is_partner" = ?)')
-	//     expect(builder.getBindings()).toEqual(['US', 1])
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoin('contacts', j => {
-	//         j.on('users.id', '=', 'contacts.id').where('contacts.is_active', '=', 1).orOn(j => {
-	//             j.orWhere(j => {
-	//                 j.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type');
-	//             }).where(j => {
-	//                 j.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner');
-	//             });
-	//         });
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" left join "contacts" on "users"."id" = "contacts"."id" and "contacts"."is_active" = ? or (("contacts"."country" = ? or "contacts"."type" = "users"."type") and ("contacts"."country" = ? or "contacts"."is_partner" is null))')
-	//     expect(builder.getBindings()).toEqual([1, 'UK', 'US'])
-	// }
+	test('JoinWhereNotNull', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').whereNotNull('contacts.deleted_at')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."deleted_at" IS NOT NULL'
+		)
 
-	// )
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').orWhereNotNull('contacts.deleted_at')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "contacts"."deleted_at" IS NOT NULL'
+		)
+	})
+
+	test('JoinWhereIn', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', [48, 'baz', null])
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."name" IN (?, ?, ?)'
+		)
+		expect(builder.getBindings()).toEqual([48, 'baz', null])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', [48, 'baz', null])
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "contacts"."name" IN (?, ?, ?)'
+		)
+		expect(builder.getBindings()).toEqual([48, 'baz', null])
+	})
+
+	test('JoinWhereInSubquery', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				const q = getBuilder()
+				q.select('name')
+					.from('contacts')
+					.where('name', 'baz')
+				j.on('users.id', '=', 'contacts.id').whereIn('contacts.name', q)
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."name" IN (SELECT "name" FROM "contacts" WHERE "name" = ?)'
+		)
+		expect(builder.getBindings()).toEqual(['baz'])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				const q = getBuilder()
+				q.select('name')
+					.from('contacts')
+					.where('name', 'baz')
+				j.on('users.id', '=', 'contacts.id').orWhereIn('contacts.name', q)
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "contacts"."name" IN (SELECT "name" FROM "contacts" WHERE "name" = ?)'
+		)
+		expect(builder.getBindings()).toEqual(['baz'])
+	})
+
+	test('JoinWhereNotIn', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').whereNotIn('contacts.name', [48, 'baz', null])
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."name" NOT IN (?, ?, ?)'
+		)
+		expect(builder.getBindings()).toEqual([48, 'baz', null])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', j => {
+				j.on('users.id', '=', 'contacts.id').orWhereNotIn('contacts.name', [48, 'baz', null])
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" OR "contacts"."name" NOT IN (?, ?, ?)'
+		)
+		expect(builder.getBindings()).toEqual([48, 'baz', null])
+	})
+
+	test('JoinsWithNestedConditions', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', (j: JoinClause) => {
+				j.on('users.id', '=', 'contacts.id').where(j2 => {
+					j2.where('contacts.country', '=', 'US').orWhere('contacts.is_partner', '=', 1)
+				})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND ("contacts"."country" = ? OR "contacts"."is_partner" = ?)'
+		)
+		expect(builder.getBindings()).toEqual(['US', 1])
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoin('contacts', (j: JoinClause) => {
+				j.on('users.id', '=', 'contacts.id')
+					.where('contacts.is_active', '=', 1)
+					.orOn(j2 => {
+						j2.orWhere((j3: JoinClause) => {
+							j3.where('contacts.country', '=', 'UK').orOn('contacts.type', '=', 'users.type')
+						}).where(j3 => {
+							j3.where('contacts.country', '=', 'US').orWhereNull('contacts.is_partner')
+						})
+					})
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "contacts" ON "users"."id" = "contacts"."id" AND "contacts"."is_active" = ? OR (("contacts"."country" = ? OR "contacts"."type" = "users"."type") AND ("contacts"."country" = ? OR "contacts"."is_partner" IS NULL))'
+		)
+		expect(builder.getBindings()).toEqual([1, 'UK', 'US'])
+	})
 	// test('JoinsWithAdvancedConditions', () => {
 	//     builder = getBuilder();
 	//     builder.select('*').from('users').leftJoin('contacts', j => {
