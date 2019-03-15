@@ -305,6 +305,28 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile a where condition with a sub-select.
+	 */
+	protected whereSub(query: QueryObj, where: WhereClause): string {
+		const select = this.compileSelect(where.query!)
+		return `${this.wrap(where.column!)} ${where.operator!} (${select})`
+	}
+
+	/**
+	 * Compile a where exists clause.
+	 */
+	protected whereExists(query: QueryObj, where: WhereClause): string {
+		return `EXISTS (${this.compileSelect(where.query!)})`
+	}
+
+	/**
+	 * Compile a where exists clause.
+	 */
+	protected whereNotExists(query: QueryObj, where: WhereClause): string {
+		return `NOT EXISTS (${this.compileSelect(where.query!)})`
+	}
+
+	/**
 	 * Compile the "group by" portions of the query.
 	 */
 	protected compileGroups(query: QueryObj, groups: Group[]): string {

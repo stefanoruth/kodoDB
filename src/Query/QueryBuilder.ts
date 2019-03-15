@@ -4,7 +4,7 @@ import { QueryProcessor } from './Processors/QueryProcessor'
 import { Collection, tap } from '../Utils'
 import { Expression } from './Expression'
 import { Arr } from '../Utils/Arr'
-import { Operators } from './Operators'
+import { Operators, OperatorType } from './Operators'
 import { QueryObj } from './QueryObj'
 import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause } from './Components'
 
@@ -89,7 +89,7 @@ export class QueryBuilder {
 	 * Add a raw from clause to the query.
 	 */
 	fromRaw(expression: string, bindings: any[] = []): QueryBuilder {
-		this.queryObj.from = new Expression(expression).toString()
+		this.queryObj.from = new Expression(expression).toString().toString()
 		this.addBinding(bindings, 'from')
 		return this
 	}
@@ -159,14 +159,14 @@ export class QueryBuilder {
 	 * Add a join clause to the query.
 	 */
 	join(
-		table: string,
+		table: string | Expression,
 		first: string | JoinFn,
 		operator?: string,
 		second?: string,
 		type: string = 'INNER',
 		where: boolean = false
 	): QueryBuilder {
-		const join = this.newJoinClause(this, type, table)
+		const join = this.newJoinClause(this, type, table.toString().toString())
 		// If the first "column" of the join is really a Closure instance the developer
 		// is trying to build a join with a complex "on" clause containing more than
 		// one condition, so we'll add the join and call a Closure with the query.
@@ -188,6 +188,102 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add a "join where" clause to the query.
+	 */
+	joinWhere(
+		table: string,
+		first: QueryFn | string,
+		operator: OperatorType,
+		second: string,
+		type = 'INNER'
+	): QueryBuilder {
+		return this.join(table, first, operator, second, type, true)
+	}
+
+	/**
+	 * Add a subquery join clause to the query.
+	 */
+	joinSub(
+		query: QueryBuilder | string,
+		as: string,
+		first: QueryFn | string,
+		operator?: OperatorType,
+		second?: string,
+		type = 'INNER', // TODO type interface for Join types
+		where: boolean = false
+	): QueryBuilder {
+		const [subQuery, bindings] = this.createSub(query)
+		const expression = `(${query}) AS ${this.grammar.wrap(as)}`
+		this.addBinding(bindings, 'join')
+		return this.join(new Expression(expression), first, operator, second, type, where)
+	}
+
+	/**
+	 * Add a left join to the query.
+	 */
+	leftJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+		return this.join(table, first, operator, second, 'LEFT')
+	}
+
+	/**
+	 * Add a "join where" clause to the query.
+	 */
+	leftJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): QueryBuilder {
+		return this.joinWhere(table, first, operator, second, 'LEFT')
+	}
+
+	/**
+	 * Add a subquery left join to the query.
+	 */
+	leftJoinSub(
+		query: QueryBuilder | string,
+		as: string,
+		first: QueryFn | string,
+		operator?: OperatorType,
+		second?: string
+	): QueryBuilder {
+		return this.joinSub(query, as, first, operator, second, 'LEFT')
+	}
+
+	/**
+	 * Add a right join to the query.
+	 */
+	rightJoin(table: string, first: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+		return this.join(table, first, operator, second, 'RIGHT')
+	}
+
+	/**
+	 * Add a "right join where" clause to the query.
+	 */
+	rightJoinWhere(table: string, first: QueryFn | string, operator: OperatorType, second: string): QueryBuilder {
+		return this.joinWhere(table, first, operator, second, 'RIGHT')
+	}
+
+	/**
+	 * Add a subquery right join to the query.
+	 */
+	rightJoinSub(
+		query: QueryBuilder | string,
+		as: string,
+		first: QueryFn | string,
+		operator?: OperatorType,
+		second?: string
+	): QueryBuilder {
+		return this.joinSub(query, as, first, operator, second, 'RIGHT')
+	}
+
+	/**
+	 * Add a "cross join" clause to the query.
+	 */
+	crossJoin(table: string, first?: QueryFn | string, operator?: OperatorType, second?: string): QueryBuilder {
+		if (first) {
+			return this.join(table, first, operator, second, 'CROSS')
+		}
+		this.queryObj.joins.push(this.newJoinClause(this, 'CROSS', table).queryObj)
+		return this
+	}
+
+	/**
 	 * Get a new join clause.
 	 */
 	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string): JoinClause {
@@ -197,7 +293,7 @@ export class QueryBuilder {
 	/**
 	 * Add a basic where clause to the query.
 	 */
-	where(column: Column | QueryFn, operator?: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
+	where(column: Column | QueryFn | any[], operator?: any, value?: any, bool: WhereBoolean = 'AND'): QueryBuilder {
 		// If the column is an array, we will assume it is an array of key-value pairs
 		// and can add them each as a where clause. We will maintain the boolean we
 		// received when the method was called and pass it into the nested where.
@@ -615,6 +711,51 @@ export class QueryBuilder {
 		callback(query)
 
 		this.queryObj.wheres.push({ type, column, operator, query: query.queryObj, bool })
+		this.addBinding(query.getBindings(), 'where')
+
+		return this
+	}
+
+	/**
+	 * Add an exists clause to the query.
+	 */
+	whereExists(callback: QueryFn, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const query = this.forSubQuery()
+		// Similar to the sub-select clause, we will create a new query instance so
+		// the developer may cleanly specify the entire exists query and we will
+		// compile the whole thing in the grammar and insert it into the SQL.
+		callback(query)
+
+		return this.addWhereExistsQuery(query, bool, not)
+	}
+
+	/**
+	 * Add an or exists clause to the query.
+	 */
+	orWhereExists(callback: QueryFn, not: boolean = false): QueryBuilder {
+		return this.whereExists(callback, 'OR', not)
+	}
+
+	/**
+	 * Add a where not exists clause to the query.
+	 */
+	whereNotExists(callback: QueryFn, bool: WhereBoolean = 'AND') {
+		return this.whereExists(callback, bool, true)
+	}
+
+	/**
+	 * Add a where not exists clause to the query.
+	 */
+	orWhereNotExists(callback: QueryFn): QueryBuilder {
+		return this.orWhereExists(callback, true)
+	}
+
+	/**
+	 * Add an exists clause to the query.
+	 */
+	addWhereExistsQuery(query: QueryBuilder, bool: WhereBoolean = 'AND', not: boolean = false): QueryBuilder {
+		const type = not ? 'NotExists' : 'Exists'
+		this.queryObj.wheres.push({ type, query: query.queryObj, bool })
 		this.addBinding(query.getBindings(), 'where')
 
 		return this

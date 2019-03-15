@@ -968,17 +968,18 @@ describe('QueryBuilder', () => {
 	//     builder.select('*').from('users').where([['foo', 1], ['bar', 2]]);
 	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" = ?)')
 	//     expect(builder.getBindings()).toEqual([1, 2])
+
 	//     builder = getBuilder();
 	//     builder.select('*').from('users').where(['foo' => 1, 'bar' => 2]);
 	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" = ?)')
 	//     expect(builder.getBindings()).toEqual([1, 2])
+
 	//     builder = getBuilder();
 	//     builder.select('*').from('users').where([['foo', 1], ['bar', '<', 2]]);
 	//     expect(builder.toSql()).toBe('select * from "users" where ("foo" = ? and "bar" < ?)')
 	//     expect(builder.getBindings()).toEqual([1, 2])
-	// }
+	// })
 
-	// )
 	test('NestedWheres', () => {
 		builder = getBuilder()
 		builder
@@ -1000,53 +1001,108 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual(['foo', 'bar'])
 	})
 
-	// test('FullSubSelects', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('email', '=', 'foo').orWhere('id', '=', q => {
-	//         q.select(new Expression('max(id)')).from('users').where('email', '=', 'bar');
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "users" where "email" = ? or "id" = (select max(id) from "users" where "email" = ?)')
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar'])
-	// })
+	test('FullSubSelects', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('email', '=', 'foo')
+			.orWhere('id', '=', (q: any) => {
+				q.select(new Expression('max(id)'))
+					.from('users')
+					.where('email', '=', 'bar')
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" WHERE "email" = ? OR "id" = (SELECT max(id) FROM "users" WHERE "email" = ?)'
+		)
+		expect(builder.getBindings()).toEqual(['foo', 'bar'])
+	})
 
-	// test('WhereExists', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').whereExists(q => {
-	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "orders" where exists (select * from "products" where "products"."id" = "orders"."id")')
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').whereNotExists(q => {
-	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "orders" where not exists (select * from "products" where "products"."id" = "orders"."id")')
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').where('id', '=', 1).orWhereExists(q => {
-	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "orders" where "id" = ? or exists (select * from "products" where "products"."id" = "orders"."id")')
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').where('id', '=', 1).orWhereNotExists(q => {
-	//         q.select('*').from('products').where('products.id', '=', new Expression('"orders"."id"'));
-	//     });
-	//     expect(builder.toSql()).toBe('select * from "orders" where "id" = ? or not exists (select * from "products" where "products"."id" = "orders"."id")')
-	// }
+	test('WhereExists', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.whereExists(q => {
+				q.select('*')
+					.from('products')
+					.where('products.id', '=', new Expression('"orders"."id"'))
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "orders" WHERE EXISTS (SELECT * FROM "products" WHERE "products"."id" = "orders"."id")'
+		)
 
-	// )
-	// test('BasicJoins', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', 'users.id', 'contacts.id');
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('contacts', 'users.id', '=', 'contacts.id').leftJoin('photos', 'users.id', '=', 'photos.id');
-	//     expect(builder.toSql()).toBe('select * from "users" inner join "contacts" on "users"."id" = "contacts"."id" left join "photos" on "users"."id" = "photos"."id"')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').leftJoinWhere('photos', 'users.id', '=', 'bar').joinWhere('photos', 'users.id', '=', 'foo');
-	//     expect(builder.toSql()).toBe('select * from "users" left join "photos" on "users"."id" = ? inner join "photos" on "users"."id" = ?')
-	//     expect(builder.getBindings()).toEqual(['bar', 'foo'])
-	// }
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.whereNotExists(q => {
+				q.select('*')
+					.from('products')
+					.where('products.id', '=', new Expression('"orders"."id"'))
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "orders" WHERE NOT EXISTS (SELECT * FROM "products" WHERE "products"."id" = "orders"."id")'
+		)
 
-	// )
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.where('id', '=', 1)
+			.orWhereExists(q => {
+				q.select('*')
+					.from('products')
+					.where('products.id', '=', new Expression('"orders"."id"'))
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "orders" WHERE "id" = ? OR EXISTS (SELECT * FROM "products" WHERE "products"."id" = "orders"."id")'
+		)
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.where('id', '=', 1)
+			.orWhereNotExists(q => {
+				q.select('*')
+					.from('products')
+					.where('products.id', '=', new Expression('"orders"."id"'))
+			})
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "orders" WHERE "id" = ? OR NOT EXISTS (SELECT * FROM "products" WHERE "products"."id" = "orders"."id")'
+		)
+	})
+
+	test('BasicJoins', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', 'users.id', 'contacts.id')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id"')
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('contacts', 'users.id', '=', 'contacts.id')
+			.leftJoin('photos', 'users.id', '=', 'photos.id')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN "contacts" ON "users"."id" = "contacts"."id" LEFT JOIN "photos" ON "users"."id" = "photos"."id"'
+		)
+
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.leftJoinWhere('photos', 'users.id', '=', 'bar')
+			.joinWhere('photos', 'users.id', '=', 'foo')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" LEFT JOIN "photos" ON "users"."id" = ? INNER JOIN "photos" ON "users"."id" = ?'
+		)
+		expect(builder.getBindings()).toEqual(['bar', 'foo'])
+	})
 	// test('CrossJoins', () => {
 	//     builder = getBuilder();
 	//     builder.select('*').from('sizes').crossJoin('colors');
