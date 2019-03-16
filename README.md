@@ -2,14 +2,24 @@
 
 ## Todo
 
-- [ ] DatabaseConfig
-- [ ] DatabaseConnectors
+- [x] Drivers
+- [ ] Query Builder
 - [ ] Migrations
-- [ ] QueryBuilder
+- [ ] Manager
+- [ ] Connections
+- [ ] Connectors
 - [ ] CLI
-- [ ] Models
-- [ ] Relations
+- [ ] ActiveRecord
+- [ ] ORM
 - [ ] Seeder
+- [ ] Lots of Tests
+
+### Drivers
+
+- [ ] MySQL (First Iteration)
+- [ ] SQLite
+- [ ] Postgres
+- [ ] MSSQL
 
 ## Example
 
@@ -56,17 +66,19 @@ user.delete()
 ```
 
 ### Migration
+
 2019_02_04_095900_create_users_table.ts
+
 ```typescript
 export class CreateUsersTable extends Migration {
-    run() {
-    	Schema.create('users', (table) => {
-	   table.integer('id').primary()
-	   table.string('email').unique()
-	   table.string('name').nullable()
-	   table.string('password', 60)
-	   table.timestamps()
-	})
-    }
+	run() {
+		Schema.create('users', table => {
+			table.integer('id').primary()
+			table.string('email').unique()
+			table.string('name').nullable()
+			table.string('password', 60)
+			table.timestamps()
+		})
+	}
 }
 ```

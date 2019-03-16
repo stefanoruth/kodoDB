@@ -9,7 +9,7 @@ export interface Order {
 	sql?: string
 }
 
-export type OrderDirection = 'asc' | 'desc'
+export type OrderDirection = 'asc' | 'desc' | 'ASC' | 'DESC'
 
 // SQL Aggregate
 export interface Aggregate {
@@ -29,7 +29,7 @@ export interface UnionOrder {
 export type Group = string | Expression
 
 // SQL Where
-export type WhereBoolean = 'AND' | 'OR'
+export type WhereBoolean = 'AND' | 'OR' | 'and' | 'or'
 
 export interface WhereClause {
 	type: string

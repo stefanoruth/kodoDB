@@ -11,11 +11,11 @@ export class QueryException extends Error {
 		this.message = `${previous.message} (SQL: ${sql})` // Todo insert bindings
 	}
 
-	getSql() {
+	getSql = () => {
 		return this.sql
 	}
 
-	getBindings() {
+	getBindings = () => {
 		return this.bindings
 	}
 }

@@ -33,7 +33,7 @@ export class QueryObj {
 	/**
 	 * The table which the query is targeting.
 	 */
-	from: string = ''
+	from?: string | Expression
 
 	/**
 	 * The table joins for the query.
@@ -103,5 +103,5 @@ export class QueryObj {
 	/**
 	 * The table the join clause is joining to.
 	 */
-	joinTable?: string
+	joinTable?: string | Expression
 }

@@ -2,6 +2,7 @@ import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
 import { QueryObj } from '../QueryObj'
 import { WhereClause, Group, Bindings } from '../Components'
+import { Expression } from '../Expression'
 
 export class QueryGrammar extends BaseGrammar {
 	/**
@@ -31,6 +32,8 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile a select query into SQL.
 	 */
 	compileSelect(query: QueryObj): string {
+		// console.log(JSON.stringify(query))
+
 		if (query.unions && query.aggregate) {
 			return this.compileUnionAggregate(query)
 		}
@@ -124,9 +127,8 @@ export class QueryGrammar extends BaseGrammar {
 			.map((join: QueryObj) => {
 				const table = this.wrapTable(join.joinTable!)
 				const nestedJoins = join.joins.length > 0 ? ' ' + this.compileJoins(query, join.joins) : ' '
-				console.log(nestedJoins)
 				const tableAndNestedJoins = join.joins.length > 0 ? `(${table}.${nestedJoins})` : table
-				console.log(tableAndNestedJoins)
+
 				return `${join.joinType!} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
 			})
 			.join(' ')
@@ -326,6 +328,16 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile a where row values condition.
+	 */
+	protected whereRowValues(query: QueryObj, where: WhereClause): string {
+		const columns = this.columnize(where.column! as Array<string | Expression>)
+		const values = this.parameterize(where.values)
+
+		return `(${columns}) ${where.operator} (${values})`
+	}
+
+	/**
 	 * Compile the "group by" portions of the query.
 	 */
 	protected compileGroups(query: QueryObj, groups: Group[]): string {
@@ -370,7 +382,8 @@ export class QueryGrammar extends BaseGrammar {
 	protected compileBasicHaving(having: any): string {
 		const column = this.wrap(having.column)
 		const parameter = this.parameter(having.value)
-		return having.bool + ' ' + column + ' ' + having.operator + ' ' + parameter
+
+		return `${having.bool} ${column} ${having.operator} ${parameter}`
 	}
 
 	/**
@@ -381,7 +394,8 @@ export class QueryGrammar extends BaseGrammar {
 		const column = this.wrap(having.column)
 		const min = this.parameter(having.values[0])
 		const max = this.parameter(having.values[having.values.length - 1])
-		return having.bool + ' ' + column + ' ' + between + ' ' + min + ' AND ' + max
+
+		return `${having.bool} ${column} ${between} ${min} AND ${max}`
 	}
 
 	/**
@@ -479,7 +493,7 @@ export class QueryGrammar extends BaseGrammar {
 		// Essentially we will force every insert to be treated as a batch insert which
 		// simply makes creating the SQL easier for us since we can utilize the same
 		// basic routine regardless of an amount of records given to us to insert.
-		const table = this.wrapTable(query.from)
+		const table = this.wrapTable(query.from!)
 		if (values[0] && !(values instanceof Array)) {
 			values = [values]
 		}
@@ -515,7 +529,7 @@ export class QueryGrammar extends BaseGrammar {
 	compileDelete(query: QueryObj): string {
 		const wheres = query.wheres instanceof Array ? this.compileWheres(query) : ''
 
-		return `DELETE FROM ${this.wrapTable(query.from)} ${wheres}`.trim()
+		return `DELETE FROM ${this.wrapTable(query.from!)} ${wheres}`.trim()
 	}
 
 	/**

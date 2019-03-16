@@ -1,3 +1,4 @@
+export * from './ConnectionEvent'
 export * from './QueryExecuted'
 export * from './StatementPrepared'
 export * from './TransactionBeginning'

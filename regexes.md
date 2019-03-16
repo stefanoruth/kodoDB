@@ -23,5 +23,5 @@ Callback
 
 ```
 function \((.+)\)
-$1 =>
+($1:any) =>
 ```

@@ -17,23 +17,17 @@ function getBuilder() {
 	return Mock.from<QueryBuilder>(new QueryBuilder(connection, grammar, processor))
 }
 
-function assertEquals(result: any, response: any) {
-	expect(response).toEqual(result)
-}
-
 let builder: QueryBuilder
-
-beforeEach(() => {
-	builder = getBuilder()
-})
 
 describe('QueryBuilder', () => {
 	test('basicSelect', () => {
+		builder = getBuilder()
 		builder.select('*').from('users')
 		expect(builder.toSql()).toBe('SELECT * FROM "users"')
 	})
 
 	test('basicSelectWithGetColumns', () => {
+		builder = getBuilder()
 		// expect(builder.getProcessor().processSelect).toBeCalled()
 		// expect(builder.getConnection().select).toBeCalledTimes(1)
 
@@ -61,21 +55,25 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicTableWrappingProtectsQuotationMarks', () => {
+		builder = getBuilder()
 		builder.select('*').from('some"table')
 		expect(builder.toSql()).toBe('SELECT * FROM "some""table"')
 	})
 
 	test('aliasWrappingAsWholeConstant', () => {
+		builder = getBuilder()
 		builder.select('x.y as foo.bar').from('baz')
 		expect(builder.toSql()).toBe('SELECT "x"."y" AS "foo.bar" FROM "baz"')
 	})
 
 	test('aliasWrappingWithSpacesInDatabaseName', () => {
+		builder = getBuilder()
 		builder.select('w x.y.z as foo.bar').from('baz')
 		expect(builder.toSql()).toBe('SELECT "w x"."y"."z" AS "foo.bar" FROM "baz"')
 	})
 
 	test('addingSelects', () => {
+		builder = getBuilder()
 		builder
 			.select('foo')
 			.addSelect('bar')
@@ -85,12 +83,14 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicSelectWithPrefix', () => {
+		builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder.select('*').from('users')
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users"')
 	})
 
 	test('basicSelectDistinct', () => {
+		builder = getBuilder()
 		builder
 			.distinct()
 			.select('foo', 'bar')
@@ -99,17 +99,20 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicAlias', () => {
+		builder = getBuilder()
 		builder.select('foo as bar').from('users')
 		expect(builder.toSql()).toBe('SELECT "foo" AS "bar" FROM "users"')
 	})
 
 	test('aliasWithPrefix', () => {
+		builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder.select('*').from('users as people')
 		expect(builder.toSql()).toBe('SELECT * FROM "prefix_users" AS "prefix_people"')
 	})
 
 	test('joinAliasesWithPrefix', () => {
+		builder = getBuilder()
 		builder.getGrammar().setTablePrefix('prefix_')
 		builder
 			.select('*')
@@ -122,6 +125,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicTableWrapping', () => {
+		builder = getBuilder()
 		builder.select('*').from('public.users')
 		expect(builder.toSql()).toBe('SELECT * FROM "public"."users"')
 	})
@@ -279,6 +283,7 @@ describe('QueryBuilder', () => {
 			return query.where('id', '=', 1)
 		}
 
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -288,6 +293,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('basicWheres', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -297,6 +303,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('dateBasedWheresExpressionIsNotBound', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -332,6 +339,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('BasicOrWheres', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -342,6 +350,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('RawWheres', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -351,6 +360,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('RawOrWheres', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -457,6 +467,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('WhereIntegerInRaw', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -518,6 +529,7 @@ describe('QueryBuilder', () => {
 
 	test('ArrayWhereColumn', () => {
 		const conditions = [['first_name', 'last_name'], ['updated_at', '>', 'created_at']]
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -529,6 +541,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('unions', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -544,6 +557,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('unionAlls', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -559,6 +573,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('MultipleUnions', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -582,6 +597,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('MultipleUnionAlls', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -606,6 +622,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('UnionOrderBys', () => {
+		builder = getBuilder()
 		builder
 			.select('*')
 			.from('users')
@@ -624,6 +641,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('UnionLimitsAndOffsets', () => {
+		builder = getBuilder()
 		builder.select('*').from('users')
 		builder.union(
 			getBuilder()
@@ -635,6 +653,7 @@ describe('QueryBuilder', () => {
 	})
 
 	test('UnionWithJoin', () => {
+		builder = getBuilder()
 		builder.select('*').from('users')
 		builder.union(
 			getBuilder()
@@ -1464,7 +1483,7 @@ describe('QueryBuilder', () => {
 					})
 			})
 		// expect(builder.toSql()).toBe(
-		// 	'select "users"."id", "contacts"."id", "contact_types"."id" from "users" left join ("contacts" inner join "contact_types" on "contacts"."contact_type_id" = "contact_types"."id") on "users"."id" = "contacts"."id" and exists (select * from "countrys" inner join "planets" on "countrys"."planet_id" = "planet"."id" and "planet"."is_settled" = ? where "contacts"."country" = "countrys"."country" and "planet"."population" >= ?)'
+		// 	'SELECT "users"."id", "contacts"."id", "contact_types"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id") ON "users"."id" = "contacts"."id" AND EXISTS (SELECT * FROM "countrys" INNER JOIN "planets" ON "countrys"."planet_id" = "planet"."id" AND "planet"."is_settled" = ? WHERE "contacts"."country" = "countrys"."country" AND "planet"."population" >= ?)'
 		// )
 		expect(builder.getBindings()).toEqual([1, 10000])
 	})
@@ -1473,7 +1492,7 @@ describe('QueryBuilder', () => {
 		builder = getBuilder()
 		builder.from('users').joinSub('select * from "contacts"', 'sub', 'users.id', '=', 'sub.id')
 		expect(builder.toSql()).toBe(
-			'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
+			'SELECT * FROM "users" INNER JOIN (select * from "contacts") AS "sub" ON "users"."id" = "sub"."id"'
 		)
 
 		// builder = getBuilder()
@@ -1497,17 +1516,22 @@ describe('QueryBuilder', () => {
 			'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
 		)
 
-		//     builder = getBuilder();
-		//     sub1 = getBuilder().from('contacts').where('name', 'foo');
-		//     sub2 = getBuilder().from('contacts').where('name', 'bar');
-		//     builder.from('users')
-		//         .joinSub(sub1, 'sub1', 'users.id', '=', 1, 'inner', true)
-		//         .joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id');
-		//     expected = 'select * from "users" ';
-		//     expected.= 'inner join (select * from "contacts" where "name" = ?) as "sub1" on "users"."id" = ? ';
-		//     expected.= 'inner join (select * from "contacts" where "name" = ?) as "sub2" on "users"."id" = "sub2"."user_id"';
-		//     assertEquals(expected, builder.toSql());
-		//     assertEquals(['foo', 1, 'bar'], builder.getRawBindings()['join']);
+		builder = getBuilder()
+		const sub1 = getBuilder()
+			.from('contacts')
+			.where('name', 'foo')
+		const sub2 = getBuilder()
+			.from('contacts')
+			.where('name', 'bar')
+		builder
+			.from('users')
+			.joinSub(sub1, 'sub1', 'users.id', '=', 1, 'inner', true)
+			.joinSub(sub2, 'sub2', 'users.id', '=', 'sub2.user_id')
+
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts" WHERE "name" = ?) AS "sub1" ON "users"."id" = ? INNER JOIN (SELECT * FROM "contacts" WHERE "name" = ?) AS "sub2" ON "users"."id" = "sub2"."user_id"'
+		)
+		expect(builder.getRawBindings().join).toEqual(['foo', 1, 'bar'])
 	})
 
 	test('LeftJoinSub', () => {
@@ -1526,155 +1550,206 @@ describe('QueryBuilder', () => {
 		)
 	})
 
-	// test('RawExpressionsInSelect', () => {
-	// 	builder = getBuilder()
-	// 	builder.select(new Expression('substr(foo, 6)')).from('users')
-	// 	expect(builder.toSql()).toBe('SELECT substr(foo, 6) FROM "users"')
-	// })
+	test('RawExpressionsInSelect', () => {
+		builder = getBuilder()
+		builder.select(new Expression('substr(foo, 6)')).from('users')
+		expect(builder.toSql()).toBe('SELECT substr(foo, 6) FROM "users"')
+	})
 
-	// test('ProvidingNullWithOperatorsBuildsCorrectly', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('foo', null);
-	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is null')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('foo', '=', null);
-	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is null')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('foo', '!=', null);
-	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is not null')
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('foo', '<>', null);
-	//     expect(builder.toSql()).toBe('select * from "users" where "foo" is not null')
-	// })
+	test('ProvidingNullWithOperatorsBuildsCorrectly', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('foo', null)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "foo" IS NULL')
 
-	// test('BindingOrder', () => {
-	//     expectedSql = 'select * from "users" inner join "othertable" on "bar" = ? where "registered" = ? group by "city" having "population" > ? order by match ("foo") against(?)';
-	//     expectedBindings = ['foo', 1, 3, 'bar'];
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').join('othertable', (join: any) => {
-	//         join.where('bar', '=', 'foo');
-	//     }).where('registered', 1).groupBy('city').having('population', '>', 3).orderByRaw('match ("foo") against(?)', ['bar']);
-	//     assertEquals(expectedSql, builder.toSql());
-	//     assertEquals(expectedBindings, builder.getBindings());
-	//     // order of statements reversed
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').orderByRaw('match ("foo") against(?)', ['bar']).having('population', '>', 3).groupBy('city').where('registered', 1).join('othertable', (join: any) => {
-	//         join.where('bar', '=', 'foo');
-	//     });
-	//     assertEquals(expectedSql, builder.toSql());
-	//     assertEquals(expectedBindings, builder.getBindings());
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('foo', '=', null)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "foo" IS NULL')
 
-	// test('AddBindingWithArrayMergesBindings', () => {
-	//     builder = getBuilder();
-	//     builder.addBinding(['foo', 'bar']);
-	//     builder.addBinding(['baz']);
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('foo', '!=', null)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "foo" IS NOT NULL')
 
-	// test('AddBindingWithArrayMergesBindingsInCorrectOrder', () => {
-	//     builder = getBuilder();
-	//     builder.addBinding(['bar', 'baz'], 'having');
-	//     builder.addBinding(['foo'], 'where');
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('foo', '<>', null)
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "foo" IS NOT NULL')
+	})
 
-	// test('MergeBuilders', () => {
-	//     builder = getBuilder();
-	//     builder.addBinding(['foo', 'bar']);
-	//     otherBuilder = getBuilder();
-	//     otherBuilder.addBinding(['baz']);
-	//     builder.mergeBindings(otherBuilder);
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
-	// })
+	test('BindingOrder', () => {
+		const expectedSql =
+			'SELECT * FROM "users" INNER JOIN "othertable" ON "bar" = ? WHERE "registered" = ? GROUP BY "city" HAVING "population" > ? ORDER BY match ("foo") against(?)'
+		const expectedBindings = ['foo', 1, 3, 'bar']
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.join('othertable', (join: any) => {
+				join.where('bar', '=', 'foo')
+			})
+			.where('registered', 1)
+			.groupBy('city')
+			.having('population', '>', 3)
+			.orderByRaw('match ("foo") against(?)', ['bar'])
+		expect(builder.toSql()).toBe(expectedSql)
+		expect(builder.getBindings()).toEqual(expectedBindings)
 
-	// test('MergeBuildersBindingOrder', () => {
-	//     builder = getBuilder();
-	//     builder.addBinding('foo', 'where');
-	//     builder.addBinding('baz', 'having');
-	//     otherBuilder = getBuilder();
-	//     otherBuilder.addBinding('bar', 'where');
-	//     builder.mergeBindings(otherBuilder);
-	//     expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
-	// })
+		// order of statements reversed
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.orderByRaw('match ("foo") against(?)', ['bar'])
+			.having('population', '>', 3)
+			.groupBy('city')
+			.where('registered', 1)
+			.join('othertable', (join: any) => {
+				join.where('bar', '=', 'foo')
+			})
+		expect(builder.toSql()).toBe(expectedSql)
+		expect(builder.getBindings()).toEqual(expectedBindings)
+	})
 
-	// test('UppercaseLeadingBooleansAreRemoved', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'AND');
-	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
-	// })
+	test('AddBindingWithArrayMergesBindings', () => {
+		builder = getBuilder()
+		builder.addBinding(['foo', 'bar'])
+		builder.addBinding(['baz'])
+		expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	})
 
-	// test('LowercaseLeadingBooleansAreRemoved', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'and');
-	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
-	// })
+	test('AddBindingWithArrayMergesBindingsInCorrectOrder', () => {
+		builder = getBuilder()
+		builder.addBinding(['bar', 'baz'], 'having')
+		builder.addBinding(['foo'], 'where')
+		expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	})
 
-	// test('CaseInsensitiveLeadingBooleansAreRemoved', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('users').where('name', '=', 'Taylor', 'And');
-	//     expect(builder.toSql()).toBe('select * from "users" where "name" = ?')
-	// })
+	test('MergeBuilders', () => {
+		builder = getBuilder()
+		builder.addBinding(['foo', 'bar'])
+		const otherBuilder = getBuilder()
+		otherBuilder.addBinding(['baz'])
+		builder.mergeBindings(otherBuilder)
+		expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	})
 
-	// test('WhereRowValues', () => {
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').whereRowValues(['last_update', 'order_number'], '<', [1, 2]);
-	//     expect(builder.toSql()).toBe('select * from "orders" where ("last_update", "order_number") < (?, ?)')
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').where('company_id', 1).orWhereRowValues(['last_update', 'order_number'], '<', [1, 2]);
-	//     expect(builder.toSql()).toBe('select * from "orders" where "company_id" = ? or ("last_update", "order_number") < (?, ?)')
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').whereRowValues(['last_update', 'order_number'], '<', [1, new Expression('2')]);
-	//     expect(builder.toSql()).toBe('select * from "orders" where ("last_update", "order_number") < (?, 2)')
-	//     expect(builder.getBindings()).toEqual([1])
-	// })
+	test('MergeBuildersBindingOrder', () => {
+		builder = getBuilder()
+		builder.addBinding('foo', 'where')
+		builder.addBinding('baz', 'having')
+		const otherBuilder = getBuilder()
+		otherBuilder.addBinding('bar', 'where')
+		builder.mergeBindings(otherBuilder)
+		expect(builder.getBindings()).toEqual(['foo', 'bar', 'baz'])
+	})
 
-	// test('WhereRowValuesArityMismatch', () => {
-	//     expectException(InvalidArgumentException:: class);
-	//     expectExceptionMessage('The number of columns must match the number of values');
-	//     builder = getBuilder();
-	//     builder.select('*').from('orders').whereRowValues(['last_update'], '<', [1, 2]);
-	// })
+	test('UppercaseLeadingBooleansAreRemoved', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('name', '=', 'Taylor', 'AND')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "name" = ?')
+	})
 
-	// test('WhereJsonContainsSqlite', () => {
-	//     expectException(RuntimeException:: class);
-	//     builder = getSQLiteBuilder();
-	//     builder.select('*').from('users').whereJsonContains('options->languages', ['en']).toSql();
-	// })
+	test('LowercaseLeadingBooleansAreRemoved', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('name', '=', 'Taylor', 'and')
+		expect(builder.toSql()).toBe('SELECT * FROM "users" WHERE "name" = ?')
+	})
 
-	// test('FromSub', () => {
-	//     builder = getBuilder();
-	//     builder.fromSub((query: any) => {
-	//         query.select(new Expression('max(last_seen_at) as last_seen_at')).from('user_sessions').where('foo', '=', '1');
-	//     }, 'sessions').where('bar', '<', '10');
-	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions" where "foo" = ?) as "sessions" where "bar" < ?')
-	//     expect(builder.getBindings()).toEqual(['1', '10'])
-	// })
+	test('WhereRowValues', () => {
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.whereRowValues(['last_update', 'order_number'], '<', [1, 2])
+		expect(builder.toSql()).toBe('SELECT * FROM "orders" WHERE ("last_update", "order_number") < (?, ?)')
 
-	// test('FromSubWithoutBindings', () => {
-	//     builder = getBuilder();
-	//     builder.fromSub((query: any) => {
-	//         query.select(new Expression('max(last_seen_at) as last_seen_at')).from('user_sessions');
-	//     }, 'sessions');
-	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"')
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.where('company_id', 1)
+			.orWhereRowValues(['last_update', 'order_number'], '<', [1, 2])
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM "orders" WHERE "company_id" = ? OR ("last_update", "order_number") < (?, ?)'
+		)
 
-	// test('FromRaw', () => {
-	//     builder = getBuilder();
-	//     builder.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"'));
-	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"')
-	// })
+		builder = getBuilder()
+		builder
+			.select('*')
+			.from('orders')
+			.whereRowValues(['last_update', 'order_number'], '<', [1, new Expression('2')])
+		expect(builder.toSql()).toBe('SELECT * FROM "orders" WHERE ("last_update", "order_number") < (?, 2)')
+		expect(builder.getBindings()).toEqual([1])
+	})
 
-	// test('FromRawOnSqlServer', () => {
-	//     builder = getSqlServerBuilder();
-	//     builder.fromRaw('dbo.[SomeNameWithRoundBrackets (test)]');
-	//     expect(builder.toSql()).toBe('select * from dbo.[SomeNameWithRoundBrackets (test)]')
-	// })
+	test('WhereRowValuesArityMismatch', () => {
+		builder = getBuilder()
+		expect(() =>
+			builder
+				.select('*')
+				.from('orders')
+				.whereRowValues(['last_update'], '<', [1, 2])
+		).toThrowError('The number of columns must match the number of values')
+	})
 
-	// test('FromRawWithWhereOnTheMainQuery', () => {
-	//     builder = getBuilder();
-	//     builder.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at"')).where('last_seen_at', '>', '1520652582');
-	//     expect(builder.toSql()).toBe('select * from (select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at" where "last_seen_at" > ?')
-	//     expect(builder.getBindings()).toEqual(['1520652582'])
-	// })
+	test('FromSub', () => {
+		builder = getBuilder()
+		builder
+			.fromSub(query => {
+				query
+					.select(new Expression('max(last_seen_at) as last_seen_at'))
+					.from('user_sessions')
+					.where('foo', '=', '1')
+			}, 'sessions')
+			.where('bar', '<', '10')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM (SELECT max(last_seen_at) as last_seen_at FROM "user_sessions" WHERE "foo" = ?) AS "sessions" WHERE "bar" < ?'
+		)
+		expect(builder.getBindings()).toEqual(['1', '10'])
+	})
+
+	test('FromSubWithoutBindings', () => {
+		builder = getBuilder()
+		builder.fromSub((query: any) => {
+			query.select(new Expression('max(last_seen_at) as last_seen_at')).from('user_sessions')
+		}, 'sessions')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM (SELECT max(last_seen_at) as last_seen_at FROM "user_sessions") AS "sessions"'
+		)
+	})
+
+	test('FromRaw', () => {
+		builder = getBuilder()
+		builder.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"'))
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM (select max(last_seen_at) as last_seen_at from "user_sessions") as "sessions"'
+		)
+	})
+
+	test('FromRawWithWhereOnTheMainQuery', () => {
+		builder = getBuilder()
+		builder
+			.fromRaw(new Expression('(select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at"'))
+			.where('last_seen_at', '>', '1520652582')
+		expect(builder.toSql()).toBe(
+			'SELECT * FROM (select max(last_seen_at) as last_seen_at from "sessions") as "last_seen_at" WHERE "last_seen_at" > ?'
+		)
+		expect(builder.getBindings()).toEqual(['1520652582'])
+	})
 })

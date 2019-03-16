@@ -7,6 +7,7 @@ import { Arr } from '../Utils/Arr'
 import { Operators, OperatorType } from './Operators'
 import { QueryObj } from './QueryObj'
 import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause } from './Components'
+import { merge, assign } from 'lodash'
 
 type QueryFn<T> = (sub: T) => any
 // type JoinFn = (join: JoinClause) => void
@@ -80,16 +81,16 @@ export class QueryBuilder {
 	/**
 	 * Makes "from" fetch from a subquery.n
 	 */
-	fromSub(query: QueryBuilder | string, as: string): this {
+	fromSub(query: this | string | QueryFn<QueryBuilder>, as: string): this {
 		const [subQuery, bindings] = this.createSub(query)
-		return this.fromRaw(`(${subQuery}) as ${this.grammar.wrap(as)}`, bindings)
+		return this.fromRaw(`(${subQuery}) AS ${this.grammar.wrap(as)}`, bindings)
 	}
 
 	/**
 	 * Add a raw from clause to the query.
 	 */
-	fromRaw(expression: string, bindings: any[] = []): this {
-		this.queryObj.from = new Expression(expression).toString().toString()
+	fromRaw(expression: string | Expression, bindings: any[] = []): this {
+		this.queryObj.from = new Expression(expression)
 		this.addBinding(bindings, 'from')
 		return this
 	}
@@ -149,7 +150,7 @@ export class QueryBuilder {
 	/**
 	 * Set the table which the query is targeting.
 	 */
-	from(table: string): this {
+	from(table?: string | Expression): this {
 		this.queryObj.from = table
 
 		return this
@@ -161,12 +162,12 @@ export class QueryBuilder {
 	join(
 		table: string | Expression,
 		first: string | QueryFn<JoinClause>,
-		operator?: string,
-		second?: string,
+		operator?: any,
+		second?: any,
 		type: string = 'INNER',
 		where: boolean = false
 	): this {
-		const join: JoinClause = this.newJoinClause(this, type.toUpperCase(), table.toString().toString())
+		const join: JoinClause = this.newJoinClause(this, type.toUpperCase(), table)
 		// If the first "column" of the join is really a Closure instance the developer
 		// is trying to build a join with a complex "on" clause containing more than
 		// one condition, so we'll add the join and call a Closure with the query.
@@ -208,15 +209,14 @@ export class QueryBuilder {
 		as: string,
 		first: QueryFn<JoinClause> | string,
 		operator?: OperatorType,
-		second?: string,
+		second?: string | number,
 		type = 'INNER', // TODO type interface for Join types
 		where: boolean = false
 	): this {
 		const [subQuery, bindings] = this.createSub(query)
 		const expression = `(${subQuery}) AS ${this.grammar.wrap(as)}`
-		console.log(expression)
 		this.addBinding(bindings, 'join')
-		console.log(new Expression(expression))
+
 		return this.join(new Expression(expression), first, operator, second, type, where)
 	}
 
@@ -288,7 +288,7 @@ export class QueryBuilder {
 	/**
 	 * Get a new join clause.
 	 */
-	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string): JoinClause {
+	protected newJoinClause(parentQuery: QueryBuilder, type: string, table: string | Expression): JoinClause {
 		return new JoinClause(parentQuery, type, table)
 	}
 
@@ -756,6 +756,33 @@ export class QueryBuilder {
 		this.addBinding(query.getBindings(), 'where')
 
 		return this
+	}
+
+	/**
+	 * Adds a where condition using row values.
+	 */
+	whereRowValues(
+		columns: Array<string | Expression>,
+		operator: OperatorType,
+		values: any[],
+		bool: WhereBoolean = 'AND'
+	): this {
+		if (columns.length !== values.length) {
+			throw new Error('The number of columns must match the number of values')
+		}
+
+		const type = 'RowValues'
+		this.queryObj.wheres.push({ type, column: columns, operator, values, bool })
+		this.addBinding(this.cleanBindings(values))
+
+		return this
+	}
+
+	/**
+	 * Adds a or where condition using row values.
+	 */
+	orWhereRowValues(columns: Array<string | Expression>, operator: OperatorType, values: any[]): this {
+		return this.whereRowValues(columns, operator, values, 'OR')
 	}
 
 	/**
@@ -1236,6 +1263,22 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Merge an array of bindings into our bindings.
+	 */
+	mergeBindings(query: this): this {
+		for (const key in this.queryObj.bindings) {
+			if (this.queryObj.bindings.hasOwnProperty(key) && query.queryObj.bindings.hasOwnProperty(key)) {
+				const binding: any[] = (this.queryObj.bindings as any)[key]
+				;(this.queryObj.bindings as any)[key] = binding.concat((query.queryObj.bindings as any)[key])
+			} else {
+				throw new Error(`Binding is missing ${key}`)
+			}
+		}
+
+		return this
+	}
+
+	/**
 	 * Remove all of the expressions from a list of bindings.
 	 *
 	 * @param  array  bindings
@@ -1343,7 +1386,7 @@ export class JoinClause extends QueryBuilder {
 	/**
 	 * Create a new join clause instance.
 	 */
-	constructor(parentQuery: QueryBuilder, type: string, table: string) {
+	constructor(parentQuery: QueryBuilder, type: string, table: string | Expression) {
 		super(parentQuery.getConnection(), parentQuery.getGrammar(), parentQuery.getProcessor())
 
 		this.queryObj.joinType = type
