@@ -1,4 +1,4 @@
-import { Bindings, Aggregate, WhereClause, Group, Order, UnionOrder } from './Components'
+import { Bindings, Aggregate, WhereClause, Group, Order, UnionOrder, Having } from './Components'
 import { Expression } from './Expression'
 
 export class QueryObj {
@@ -53,7 +53,7 @@ export class QueryObj {
 	/**
 	 * The having constraints for the query.
 	 */
-	havings: any[] = []
+	havings: Having[] = []
 
 	/**
 	 * The orderings for the query.

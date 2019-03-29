@@ -1,19 +1,19 @@
 import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
 import { QueryObj } from '../QueryObj'
-import { WhereClause, Group, Bindings } from '../Components'
+import { WhereClause, Group, Bindings, Having } from '../Components'
 import { Expression } from '../Expression'
 
 export class QueryGrammar extends BaseGrammar {
 	/**
 	 * The grammar specific operators.
 	 */
-	protected operators = []
+	protected operators: string[] = []
 
 	/**
 	 * The components that make up a select clause.
 	 */
-	protected selectComponents = [
+	protected selectComponents: string[] = [
 		'aggregate',
 		'columns',
 		'from',
@@ -127,7 +127,7 @@ export class QueryGrammar extends BaseGrammar {
 			.map((join: QueryObj) => {
 				const table = this.wrapTable(join.joinTable!)
 				const nestedJoins = join.joins.length > 0 ? ' ' + this.compileJoins(query, join.joins) : ' '
-				const tableAndNestedJoins = join.joins.length > 0 ? `(${table}.${nestedJoins})` : table
+				const tableAndNestedJoins = join.joins.length > 0 ? `(${table}${nestedJoins})` : table
 
 				return `${join.joinType!} JOIN ${tableAndNestedJoins} ${this.compileWheres(join)}`.trim()
 			})
@@ -351,7 +351,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile the "having" portions of the query.
 	 */
-	protected compileHavings(query: QueryObj, havings: any[]): string {
+	protected compileHavings(query: QueryObj, havings: Having[]): string {
 		if (havings.length === 0) {
 			return ''
 		}
@@ -364,7 +364,7 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a single having clause.
 	 */
-	protected compileHaving(having: any): string {
+	protected compileHaving(having: Having): string {
 		// If the having clause is "raw", we can just return the clause straight away
 		// without doing any more processing on it. Otherwise, we will compile the
 		// clause into SQL based on the components that make it up from builder.
@@ -379,9 +379,9 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Compile a basic having clause.
 	 */
-	protected compileBasicHaving(having: any): string {
-		const column = this.wrap(having.column)
-		const parameter = this.parameter(having.value)
+	protected compileBasicHaving(having: Having): string {
+		const column = this.wrap(having.column!)
+		const parameter = this.parameter(having.values)
 
 		return `${having.bool} ${column} ${having.operator} ${parameter}`
 	}
@@ -596,6 +596,39 @@ export class QueryGrammar extends BaseGrammar {
 	 */
 	protected wrapJsonSelector(value: string): string {
 		throw new Error('This database engine does not support JSON operations.')
+	}
+
+	/**
+	 * Wrap the given JSON selector for boolean values.
+	 */
+	protected wrapJsonBooleanSelector(value: string): string {
+		return this.wrapJsonSelector(value)
+	}
+
+	/**
+	 * Wrap the given JSON boolean value.
+	 */
+	protected wrapJsonBooleanValue(value: string): string {
+		return value
+	}
+	/**
+	 * Split the given JSON selector into the field and the optional path and wrap them separately.
+	 *
+	 * @param  string  $column
+	 * @return array
+	 */
+	protected wrapJsonFieldAndPath(column: string): [string | number, string] {
+		const parts = column.split('->', 2)
+		const field = this.wrap(parts[0])
+		const path = parts.length > 1 ? ', ' + this.wrapJsonPath(parts[1], '->') : ''
+		return [field, path]
+	}
+
+	/**
+	 * Wrap the given JSON path.
+	 */
+	protected wrapJsonPath(value: string, delimiter: string = '->'): string {
+		return `'$."${value.replace(delimiter, '"."')}"'`
 	}
 
 	/**

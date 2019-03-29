@@ -1,6 +1,9 @@
 import { Expression } from './Expression'
 import { QueryObj } from './QueryObj'
 
+// Column
+export type Column = string | Expression | Array<string | Expression>
+
 // SQL Order By
 export interface Order {
 	column?: string
@@ -33,7 +36,7 @@ export type WhereBoolean = 'AND' | 'OR' | 'and' | 'or'
 
 export interface WhereClause {
 	type: string
-	column?: string | Expression | Array<string | Expression>
+	column?: Column
 	operator?: string
 	values?: string | number | null | [] | any
 	bool: WhereBoolean
@@ -57,3 +60,22 @@ export interface Bindings {
 
 export const BindingKeys = ['select', 'from', 'join', 'where', 'having', 'order', 'union']
 export type BindingType = 'select' | 'from' | 'join' | 'where' | 'having' | 'order' | 'union'
+
+// SQL Having
+export interface Having {
+	type: string
+	column?: Column
+	operator?: string
+	values?: any
+	bool: WhereBoolean
+	sql?: string
+	not?: boolean
+}
+
+// SQL Union
+export interface Union {
+	all?: boolean
+	query?: {
+		toSql(): string
+	}
+}

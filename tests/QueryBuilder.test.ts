@@ -5,19 +5,16 @@ import { Mock } from 'ts-mockery'
 import { Connection } from '../src/Connections/Connection'
 import { Expression } from '../src/Query/Expression'
 
-function getBuilder() {
+let builder: QueryBuilder
+
+function getBuilder(args: { select?: any; processSelect?: any } = {}) {
+	const { select, processSelect } = { ...{ select: jest.fn(), processSelect: jest.fn() }, ...args }
 	const grammar = new QueryGrammar()
-	const processor = Mock.of<QueryProcessor>({
-		processSelect: jest.fn(),
-	})
-	const connection = Mock.of<Connection>({
-		select: jest.fn(),
-	})
+	const processor = Mock.of<QueryProcessor>({ processSelect })
+	const connection = Mock.of<Connection>({ select })
 
 	return Mock.from<QueryBuilder>(new QueryBuilder(connection, grammar, processor))
 }
-
-let builder: QueryBuilder
 
 describe('QueryBuilder', () => {
 	test('basicSelect', () => {
@@ -28,30 +25,25 @@ describe('QueryBuilder', () => {
 
 	test('basicSelectWithGetColumns', () => {
 		builder = getBuilder()
-		// expect(builder.getProcessor().processSelect).toBeCalled()
-		// expect(builder.getConnection().select).toBeCalledTimes(1)
-
-		//         builder-> getProcessor().shouldReceive('processSelect');
-		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     assertEquals('select * from "users"', sql);
-		// });
-		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     assertEquals('select "foo", "bar" from "users"', sql);
-		// });
-		// builder.getConnection().shouldReceive('select').once().andReturnUsing(function (sql) {
-		//     assertEquals('select "baz" from "users"', sql);
-		// });
 		builder.from('users').get()
 		expect(builder.queryObj.columns).toEqual([])
+		expect(builder.getConnection().select).toHaveBeenCalledWith('SELECT * FROM "users"', [])
 
+		builder = getBuilder()
 		builder.from('users').get(['foo', 'bar'])
 		expect(builder.queryObj.columns).toEqual([])
+		expect(builder.getConnection().select).toHaveBeenCalledWith('SELECT "foo", "bar" FROM "users"', [])
 
+		builder = getBuilder()
 		builder.from('users').get('baz')
 		expect(builder.queryObj.columns).toEqual([])
+		expect(builder.getConnection().select).toHaveBeenCalledWith('SELECT "baz" FROM "users"', [])
 
+		// No reset here, it should be able to keep part of the query but ignore the select if they are only a part of .get()
 		expect(builder.toSql()).toBe('SELECT * FROM "users"')
 		expect(builder.queryObj.columns).toEqual([])
+
+		expect(builder.getProcessor().processSelect).toHaveBeenCalled()
 	})
 
 	test('basicTableWrappingProtectsQuotationMarks', () => {
@@ -833,9 +825,9 @@ describe('QueryBuilder', () => {
 			.where('department', '=', 'popular')
 			.groupBy('category')
 			.having('total', '>', new Expression('3'))
-		// expect(builder.toSql()).toBe(
-		// 	'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > 3'
-		// )
+		expect(builder.toSql()).toBe(
+			'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > 3'
+		)
 
 		builder = getBuilder()
 		builder
@@ -854,6 +846,43 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.havingBetween('last_login_date', ['2018-11-16', '2018-12-16'])
 		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "last_login_date" BETWEEN ? AND ?')
+	})
+
+	test('HavingFollowedBySelectGet', () => {
+		let query
+		let result
+		builder = getBuilder({
+			select: () => [{ category: 'rock', total: 5 }],
+			processSelect: (_: any, results: any) => results,
+		})
+		query =
+			'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > ?'
+		builder.from('item')
+		result = builder
+			.select(['category', new Expression('count(*) as "total"')])
+			.where('department', '=', 'popular')
+			.groupBy('category')
+			.having('total', '>', 3)
+			.get()
+		expect(builder.getConnection().select).toHaveBeenCalledWith(query, ['popular', 3])
+		expect(result.all()).toEqual([{ category: 'rock', total: 5 }])
+
+		// Using \Raw value
+		builder = getBuilder({
+			select: () => [{ category: 'rock', total: 5 }],
+			processSelect: (_: any, results: any) => results,
+		})
+		query =
+			'SELECT "category", count(*) as "total" FROM "item" WHERE "department" = ? GROUP BY "category" HAVING "total" > 3'
+		builder.from('item')
+		result = builder
+			.select(['category', new Expression('count(*) as "total"')])
+			.where('department', '=', 'popular')
+			.groupBy('category')
+			.having('total', '>', new Expression('3'))
+			.get()
+		expect(builder.getConnection().select).toHaveBeenCalledWith(query, ['popular'])
+		expect(result.all()).toEqual([{ category: 'rock', total: 5 }])
 	})
 
 	test('HavingShortcut', () => {
@@ -1437,9 +1466,9 @@ describe('QueryBuilder', () => {
 			.leftJoin('contacts', j => {
 				j.on('users.id', 'contacts.id').join('contact_types', 'contacts.contact_type_id', '=', 'contact_types.id')
 			})
-		// expect(builder.toSql()).toBe(
-		// 	'SELECT "users"."id", "contacts"."id", "contact_types"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id") ON "users"."id" = "contacts"."id"'
-		// )
+		expect(builder.toSql()).toBe(
+			'SELECT "users"."id", "contacts"."id", "contact_types"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id") ON "users"."id" = "contacts"."id"'
+		)
 	})
 
 	test('JoinsWithMultipleNestedJoins', () => {
@@ -1458,9 +1487,9 @@ describe('QueryBuilder', () => {
 						})
 					})
 			})
-		// expect(builder.toSql()).toBe(
-		// 	'SELECT "users"."id", "contacts"."id", "contact_types"."id", "countrys"."id", "planets"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id" LEFT JOIN ("countrys" INNER JOIN "planets" ON "countrys"."planet_id" = "planet"."id" AND "planet"."is_settled" = ? AND "planet"."population" >= ?) ON "contacts"."country" = "countrys"."country") ON "users"."id" = "contacts"."id"'
-		// )
+		expect(builder.toSql()).toBe(
+			'SELECT "users"."id", "contacts"."id", "contact_types"."id", "countrys"."id", "planets"."id" FROM "users" LEFT JOIN ("contacts" INNER JOIN "contact_types" ON "contacts"."contact_type_id" = "contact_types"."id" LEFT JOIN ("countrys" INNER JOIN "planets" ON "countrys"."planet_id" = "planet"."id" AND "planet"."is_settled" = ? AND "planet"."population" >= ?) ON "contacts"."country" = "countrys"."country") ON "users"."id" = "contacts"."id"'
+		)
 		expect(builder.getBindings()).toEqual([1, 10000])
 	})
 
@@ -1494,21 +1523,6 @@ describe('QueryBuilder', () => {
 		expect(builder.toSql()).toBe(
 			'SELECT * FROM "users" INNER JOIN (select * from "contacts") AS "sub" ON "users"."id" = "sub"."id"'
 		)
-
-		// builder = getBuilder()
-		// builder.from('users').joinSub(
-
-		// 	(q: any) => {
-		// 		q.from('contacts')
-		// 	},
-		// 	'sub',
-		// 	'users.id',
-		// 	'=',
-		// 	'sub.id'
-		// )
-		// expect(builder.toSql()).toBe(
-		// 	'SELECT * FROM "users" INNER JOIN (SELECT * FROM "contacts") AS "sub" ON "users"."id" = "sub"."id"'
-		// )
 
 		builder = getBuilder()
 		builder.from('users').joinSub(getBuilder().from('contacts'), 'sub', 'users.id', '=', 'sub.id')

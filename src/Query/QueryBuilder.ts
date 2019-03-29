@@ -6,13 +6,10 @@ import { Expression } from './Expression'
 import { Arr } from '../Utils/Arr'
 import { Operators, OperatorType } from './Operators'
 import { QueryObj } from './QueryObj'
-import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause } from './Components'
-import { merge, assign } from 'lodash'
+import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause, Column } from './Components'
 
 type QueryFn<T> = (sub: T) => any
 // type JoinFn = (join: JoinClause) => void
-
-export type Column = string | Expression | Array<string | Expression>
 
 export class QueryBuilder {
 	/**
@@ -1035,9 +1032,7 @@ export class QueryBuilder {
 	 */
 	get(columns: string | string[] = ['*']): Collection {
 		return new Collection(
-			this.onceWithColumns(Arr.wrap(columns), () => {
-				return this.processor.processSelect(this, this.runSelect())
-			})
+			this.onceWithColumns(Arr.wrap(columns), () => this.processor.processSelect(this, this.runSelect()))
 		)
 	}
 
@@ -1168,10 +1163,9 @@ export class QueryBuilder {
 	protected onceWithColumns(columns: string[], callback: () => any): any {
 		const original = this.queryObj.columns.slice()
 
-		if (!original) {
+		if (original.length === 0) {
 			this.queryObj.columns = columns
 		}
-
 		const result = callback()
 		this.queryObj.columns = original
 		return result
