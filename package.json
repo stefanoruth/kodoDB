@@ -20,7 +20,7 @@
 		"stubs": "sh ./.bin/stubs.sh"
 	},
 	"devDependencies": {
-		"@types/jest": "^23.3.13",
+		"@types/jest": "^24.0.11",
 		"@types/mysql": "^2.15.5",
 		"@types/pg": "^7.4.11",
 		"@types/sqlite3": "^3.1.3",
