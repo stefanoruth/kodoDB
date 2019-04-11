@@ -19,12 +19,12 @@ export class BaseGrammar {
 	/**
 	 * Wrap a table in keyword identifiers.
 	 */
-	wrapTable(table: string | Expression): string | number {
+	wrapTable(table: string | Expression): string {
 		if (!(table instanceof Expression)) {
-			return this.wrap(this.tablePrefix + table, true)
+			return this.wrap(this.tablePrefix + table, true) as string
 		}
 
-		return this.getValue(table)
+		return this.getValue(table) as string
 	}
 
 	/**

@@ -535,8 +535,8 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Prepare the bindings for a delete statement.
 	 */
-	prepareBindingsForDelete(bindings: Bindings): any[] {
-		return new Collection(bindings).all()
+	prepareBindingsForDelete(bindings: any[]): any[] {
+		return bindings
 	}
 
 	/**

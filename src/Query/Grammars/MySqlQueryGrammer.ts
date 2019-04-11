@@ -3,6 +3,7 @@ import { QueryObj } from '../QueryObj'
 import { UnionOrder, Union, Bindings } from '../Components'
 import { JsonExpression } from '../JsonExpression'
 import { Arr } from '../../Utils/Arr'
+import { Collection } from '../../Utils'
 
 export class MySqlQueryGrammar extends QueryGrammar {
 	/**
@@ -127,12 +128,14 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	 * Compile all of the columns for an update statement.
 	 */
 	protected compileUpdateColumns(values: any[]): string {
-		// return collect(values).map( (value, key) {
-		//     if (this.isJsonSelector(key)) {
-		//         return this.compileJsonUpdateColumn(key, new JsonExpression(value));
-		//     }
-		//     return this.wrap(key).' = '.this.parameter(value);
-		// }).implode(', ');
+		return new Collection(values)
+			.map((value, key) => {
+				if (this.isJsonSelector(value)) {
+					return this.compileJsonUpdateColumn(value, new JsonExpression(value))
+				}
+				return `${this.wrap(value)} = ${this.parameter(value)}`
+			})
+			.join(', ')
 	}
 
 	/**
@@ -171,10 +174,10 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	/**
 	 * Prepare the bindings for a delete statement.
 	 */
-	prepareBindingsForDelete(bindings: Bindings): Bindings {
+	prepareBindingsForDelete(bindings: any): any[] {
 		const { join, select, ...cleanBindings } = bindings
 
-		return cleanBindings as Bindings
+		return cleanBindings
 	}
 
 	/**

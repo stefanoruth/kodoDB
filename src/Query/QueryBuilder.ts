@@ -1207,7 +1207,7 @@ export class QueryBuilder {
 
 		return this.connection.delete(
 			this.grammar.compileDelete(this.queryObj),
-			this.cleanBindings(this.grammar.prepareBindingsForDelete(this.queryObj.bindings))
+			this.cleanBindings(this.grammar.prepareBindingsForDelete(this.queryObj.bindings as any))
 		)
 	}
 
@@ -1274,14 +1274,9 @@ export class QueryBuilder {
 
 	/**
 	 * Remove all of the expressions from a list of bindings.
-	 *
-	 * @param  array  bindings
-	 * @return array
 	 */
-	protected cleanBindings(bindings: any[]): any[] {
-		return bindings.filter(binding => {
-			return !(binding instanceof Expression)
-		})
+	protected cleanBindings(values: any[]): any[] {
+		return new Collection(values).filter(value => !(value instanceof Expression)).all()
 	}
 
 	/**

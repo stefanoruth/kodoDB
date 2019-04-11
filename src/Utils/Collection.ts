@@ -17,7 +17,7 @@ export class Collection<T = any> {
 	/**
 	 * Get the first item from the collection.
 	 */
-	first() {
+	first(fn?: (value: T) => true, defaultValue?: any) {
 		return this.items[0]
 	}
 
