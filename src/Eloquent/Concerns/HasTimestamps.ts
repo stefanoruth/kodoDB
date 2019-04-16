@@ -1,7 +1,6 @@
-import { ClassMixin } from '../../Utils/ClassMixin'
 import { HasRelationships } from './HasRelationships'
 
-export class HasTimestamps extends ClassMixin(HasRelationships) {
+export abstract class HasTimestamps<T> extends HasRelationships<T> {
 	/**
 	 * Indicates if the model should be timestamped.
 	 */

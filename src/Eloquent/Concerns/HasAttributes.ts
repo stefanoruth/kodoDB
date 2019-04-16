@@ -1,4 +1,4 @@
-export class HasAttributes<Attributes = {}> {
+export abstract class HasAttributes<Attributes> {
 	/**
 	 * The model's attributes.
 	 */

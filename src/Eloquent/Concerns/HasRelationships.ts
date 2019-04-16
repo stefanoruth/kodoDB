@@ -1,7 +1,6 @@
-import { ClassMixin } from '../../Utils/ClassMixin'
 import { HasGlobalScopes } from './HasGlobalScopes'
 
-export class HasRelationships extends ClassMixin(HasGlobalScopes) {
+export abstract class HasRelationships<T> extends HasGlobalScopes<T> {
 	/**
 	 * The loaded relationships for the model.
 	 */

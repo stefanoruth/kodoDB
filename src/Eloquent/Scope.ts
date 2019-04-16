@@ -1,9 +1,9 @@
 import { Builder } from './Builder'
-// import { Model } from './Model'
+import { Model } from './Model'
 
 export interface Scope {
 	/**
 	 * Apply the scope to a given Eloquent query builder.
 	 */
-	apply(builder: Builder, model: any): void
+	apply(builder: Builder, model: Model): void
 }

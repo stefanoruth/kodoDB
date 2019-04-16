@@ -1,4 +1,5 @@
 import { Capsule, config, setConfig, Configuration } from 'kododb'
+import { User } from './models/User'
 
 new Capsule().setAsGlobal().addConnection({
 	driver: 'mysql',
@@ -33,4 +34,7 @@ q.where('email', '=', 'stefano')
 	.whereIn('status', ['active', 'inactive'])
 	.where('active', true)
 
-console.log(buildQuery(q.toSql(), q.getBindings()))
+// console.log(buildQuery(q.toSql(), q.getBindings()))
+
+const u1 = new User({ id: 1 })
+console.log(u1)

@@ -1,4 +1,3 @@
-import { ClassMixin } from '../../Utils/ClassMixin'
 import { HasEvents } from './HasEvents'
 
-export class HasGlobalScopes extends ClassMixin(HasEvents) {}
+export abstract class HasGlobalScopes<T> extends HasEvents<T> {}
