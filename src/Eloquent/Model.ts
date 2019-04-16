@@ -2,8 +2,18 @@ import { GuardsAttributes } from './Concerns/GuardsAttributes'
 import { Builder } from './Builder'
 import { Connection } from '../Connections/Connection'
 
+function f() {
+	console.log('f(): evaluated')
+	return (target, propertyKey: string, descriptor: PropertyDescriptor) => {
+		console.log('f(): called')
+	}
+}
+
 export class Model<Attributes = {}> extends GuardsAttributes<Attributes> {
 	protected table?: string
+
+	@f()
+	created_at: string
 
 	constructor(attributes: Partial<Attributes>) {
 		super()
