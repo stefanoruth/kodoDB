@@ -37,7 +37,7 @@ export class MySqlQueryGrammar extends QueryGrammar {
 		}
 
 		let sql = super.compileSelect(query)
-		if (query.unions) {
+		if (query.unions.length > 0) {
 			sql = `(${sql}) ` + this.compileUnions(query)
 		}
 
@@ -68,7 +68,9 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	protected compileUnion(union: Union): string {
 		const conjunction = union.all ? ' UNION ALL ' : ' UNION '
 
-		return `${conjunction}(${union.query!.toSql()})`
+		const subQuery = this.compileSelect(union.query!)
+
+		return `${conjunction}(${subQuery})`
 	}
 
 	/**
@@ -82,6 +84,7 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	 * Compile the lock into SQL.
 	 */
 	protected compileLock(query: QueryObj, value: boolean | string): string {
+		// console.log(value)
 		if (typeof value !== 'string') {
 			return value ? 'for update' : 'lock in share mode'
 		}

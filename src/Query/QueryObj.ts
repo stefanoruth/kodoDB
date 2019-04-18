@@ -93,7 +93,7 @@ export class QueryObj {
 	/**
 	 * Indicates whether row locking is being used.
 	 */
-	lock: boolean | string = false
+	lock?: boolean | string
 
 	/**
 	 * The type of join being performed.

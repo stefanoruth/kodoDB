@@ -603,6 +603,103 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Add an "or where date" statement to the query.
+	 */
+	orWhereDate(column: Column, operator: any, value?: any): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		return this.whereDate(column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "where time" statement to the query.
+	 */
+	whereTime(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		if (value instanceof Date) {
+			// value = value.format('H:i:s')
+		}
+
+		return this.addDateBasedWhere('Time', column, operator, value, bool)
+	}
+
+	/**
+	 * Add an "or where time" statement to the query.
+	 */
+	orWhereTime(column: Column, operator: any, value?: any): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		return this.whereTime(column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "where day" statement to the query.
+	 */
+	whereDay(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		if (value instanceof Date) {
+			// value = value.format('d')
+		}
+		// value = str_pad(value, 2, '0', STR_PAD_LEFT)
+
+		return this.addDateBasedWhere('Day', column, operator, value, bool)
+	}
+
+	/**
+	 * Add an "or where day" statement to the query.
+	 */
+	orWhereDay(column: Column, operator: any, value?: any): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+		return this.addDateBasedWhere('Day', column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "where month" statement to the query.
+	 */
+	whereMonth(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		if (value instanceof Date) {
+			// value = value.format('m')
+		}
+		// value = str_pad(value, 2, '0', STR_PAD_LEFT)
+
+		return this.addDateBasedWhere('Month', column, operator, value, bool)
+	}
+
+	/**
+	 * Add an "or where month" statement to the query.
+	 */
+	orWhereMonth(column: Column, operator: any, value?: any): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		return this.addDateBasedWhere('Month', column, operator, value, 'OR')
+	}
+
+	/**
+	 * Add a "where year" statement to the query.
+	 */
+	whereYear(column: Column, operator: any, value?: any, bool: WhereBoolean = 'AND'): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+
+		if (value instanceof Date) {
+			// value = value.format('Y')
+		}
+
+		return this.addDateBasedWhere('Year', column, operator, value, bool)
+	}
+
+	/**
+	 * Add an "or where year" statement to the query.
+	 */
+	orWhereYear(column: Column, operator: any, value?: any): this {
+		;[value, operator] = this.prepareValueAndOperator(value, operator, typeof value === 'undefined')
+		return this.addDateBasedWhere('Year', column, operator, value, 'OR')
+	}
+
+	/**
 	 * Add a date based (year, month, day, time) statement to the query.
 	 */
 	protected addDateBasedWhere(

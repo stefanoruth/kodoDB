@@ -42,6 +42,7 @@ export class QueryGrammar extends BaseGrammar {
 		// * character to just get all of the columns from the database. Then we
 		// can build the query and concatenate all the pieces together as one.
 		const original = query.columns
+
 		if (query.columns.length === 0) {
 			query.columns = ['*']
 		}
@@ -50,6 +51,7 @@ export class QueryGrammar extends BaseGrammar {
 		// function for the component which is responsible for making the SQL.
 		const sql = this.concatenate(this.compileComponents(query)).trim()
 		query.columns = original
+
 		return sql
 	}
 
@@ -284,6 +286,50 @@ export class QueryGrammar extends BaseGrammar {
 		const max = this.parameter(where.values[where.values.length - 1])
 
 		return `${this.wrap(where.column!)} ${between} ${min} AND ${max}`
+	}
+
+	/**
+	 * Compile a "where date" clause.
+	 */
+	protected whereDate(query: QueryObj, where: WhereClause): string {
+		return this.dateBasedWhere('DATE', query, where)
+	}
+
+	/**
+	 * Compile a "where time" clause.
+	 */
+	protected whereTime(query: QueryObj, where: WhereClause): string {
+		return this.dateBasedWhere('TIME', query, where)
+	}
+
+	/**
+	 * Compile a "where day" clause.
+	 */
+	protected whereDay(query: QueryObj, where: WhereClause): string {
+		return this.dateBasedWhere('DAY', query, where)
+	}
+
+	/**
+	 * Compile a "where month" clause.
+	 */
+	protected whereMonth(query: QueryObj, where: WhereClause): string {
+		return this.dateBasedWhere('MONTH', query, where)
+	}
+
+	/**
+	 * Compile a "where year" clause.
+	 */
+	protected whereYear(query: QueryObj, where: WhereClause): string {
+		return this.dateBasedWhere('YEAR', query, where)
+	}
+
+	/**
+	 * Compile a date based where clause.
+	 */
+	protected dateBasedWhere(type: string, query: QueryObj, where: WhereClause): string {
+		const value = this.parameter(where.values)
+
+		return `${type}(${this.wrap(where.column!)}) ${where.operator} ${value}`
 	}
 
 	/**

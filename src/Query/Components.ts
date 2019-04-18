@@ -75,7 +75,5 @@ export interface Having {
 // SQL Union
 export interface Union {
 	all?: boolean
-	query?: {
-		toSql(): string
-	}
+	query?: QueryObj
 }
