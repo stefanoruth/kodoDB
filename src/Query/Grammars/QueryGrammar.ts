@@ -1,7 +1,7 @@
 import { BaseGrammar, BaseGrammarWrap } from '../../BaseGrammar'
 import { Str, Collection } from '../../Utils'
 import { QueryObj } from '../QueryObj'
-import { WhereClause, Group, Bindings, Having } from '../Components'
+import { WhereClause, Group, Bindings, Having, Column } from '../Components'
 import { Expression } from '../Expression'
 
 export class QueryGrammar extends BaseGrammar {
@@ -384,6 +384,16 @@ export class QueryGrammar extends BaseGrammar {
 	}
 
 	/**
+	 * Compile a "where JSON boolean" clause.
+	 */
+	protected whereJsonBoolean(query: QueryObj, where: WhereClause): string {
+		const column = this.wrapJsonBooleanSelector(where.column!)
+		const value = this.wrapJsonBooleanValue(this.parameter(where.values))
+
+		return `${column} ${where.operator} ${value}`
+	}
+
+	/**
 	 * Compile the "group by" portions of the query.
 	 */
 	protected compileGroups(query: QueryObj, groups: Group[]): string {
@@ -448,10 +458,10 @@ export class QueryGrammar extends BaseGrammar {
 	 * Compile the "order by" portions of the query.
 	 */
 	protected compileOrders(query: QueryObj, orders: any[]): string {
-		if (orders.length > 0) {
-			return 'ORDER BY ' + this.compileOrdersToArray(query, orders).join(', ')
+		if (orders.length === 0) {
+			return ''
 		}
-		return ''
+		return 'ORDER BY ' + this.compileOrdersToArray(query, orders).join(', ')
 	}
 
 	/**
@@ -640,33 +650,32 @@ export class QueryGrammar extends BaseGrammar {
 	/**
 	 * Wrap the given JSON selector.
 	 */
-	protected wrapJsonSelector(value: string): string {
+	protected wrapJsonSelector(value: Column): string {
 		throw new Error('This database engine does not support JSON operations.')
 	}
 
 	/**
 	 * Wrap the given JSON selector for boolean values.
 	 */
-	protected wrapJsonBooleanSelector(value: string): string {
+	protected wrapJsonBooleanSelector(value: Column): string {
 		return this.wrapJsonSelector(value)
 	}
 
 	/**
 	 * Wrap the given JSON boolean value.
 	 */
-	protected wrapJsonBooleanValue(value: string): string {
-		return value
+	protected wrapJsonBooleanValue(value: string | number | boolean): string {
+		return String(value)
 	}
+
 	/**
 	 * Split the given JSON selector into the field and the optional path and wrap them separately.
-	 *
-	 * @param  string  $column
-	 * @return array
 	 */
 	protected wrapJsonFieldAndPath(column: string): [string | number, string] {
 		const parts = column.split('->', 2)
 		const field = this.wrap(parts[0])
 		const path = parts.length > 1 ? ', ' + this.wrapJsonPath(parts[1], '->') : ''
+
 		return [field, path]
 	}
 

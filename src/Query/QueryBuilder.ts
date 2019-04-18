@@ -333,6 +333,8 @@ export class QueryBuilder {
 			return this.whereNull(column, bool, operator !== '=')
 		}
 
+		let type = 'Basic'
+
 		// If the column is making a JSON reference we'll check to see if the value
 		// is a boolean. If it is, we'll add the raw boolean string as an actual
 		// value to the query to ensure this is properly handled by the query.
@@ -344,12 +346,15 @@ export class QueryBuilder {
 			typeof value === 'boolean'
 		) {
 			value = new Expression(value ? 'true' : 'false')
+
+			if (typeof column === 'string') {
+				type = 'JsonBoolean'
+			}
 		}
 
 		// Now that we are working with just a simple query we can put the elements
 		// in our array and add the query binding to our array of bindings that
 		// will be bound to each SQL statements when it is finally executed.
-		const type = 'Basic'
 		this.queryObj.wheres.push({ type, column, operator, values: value, bool })
 
 		if (!(value instanceof Expression)) {

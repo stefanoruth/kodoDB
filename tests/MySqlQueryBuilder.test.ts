@@ -409,39 +409,45 @@ describe('MySqlQueryBuilder', () => {
 		builder
 			.select('*')
 			.from('users')
-			.where('items.sku', '=', 'foo-bar')
-		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'."sku"\')) = ?')
-		expect(builder.getRawBindings().where).toBe(1)
-		expect(builder.toSql()).toBe('foo-bar')
+			.where('items->sku', '=', 'foo-bar')
+		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'$."sku"\')) = ?')
+		expect(builder.getRawBindings().where).toEqual(['foo-bar'])
 	})
 
-	// test('MySqlWrappingJsonWithInteger', () => {
-	// 	builder = getMySqlBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('items.price', '=', 1)
-	// 	expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'."price"\')) = ?')
-	// })
+	test('MySqlWrappingJsonWithInteger', () => {
+		builder = getMySqlBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('items->price', '=', 1)
+		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'$."price"\')) = ?')
+	})
 
-	// test('MySqlWrappingJsonWithDouble', () => {
-	// 	builder = getMySqlBuilder()
-	// 	builder
-	// 		.select('*')
-	// 		.from('users')
-	// 		.where('items.price', '=', 1.5)
-	// 	expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'."price"\')) = ?')
-	// })
+	test('MySqlWrappingJsonWithDouble', () => {
+		builder = getMySqlBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('items->price', '=', 1.5)
+		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_unquote(json_extract(`items`, \'$."price"\')) = ?')
+	})
 
-	// test('MySqlWrappingJsonWithBoolean', () => {
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').where('items.available', '=', true);
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_extract(`items`, \'."available"\') = true')
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').where(new Raw("items.'.available'"), '=', true);
-	//     assertEquals("SELECT * FROM `users` WHERE items.'.available' = true", builder.toSql());
-	// }
-	// )
+	test('MySqlWrappingJsonWithBoolean', () => {
+		builder = getMySqlBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('items->available', '=', true)
+		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_extract(`items`, \'$."available"\') = true')
+
+		builder = getMySqlBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where(new Expression("items->'$.available'"), '=', true)
+		expect(builder.toSql()).toBe("SELECT * FROM `users` WHERE items->'$.available' = true")
+	})
+
 	// test('MySqlWrappingJsonWithBooleanAndIntegerThatLooksLikeOne', () => {
 	//     builder = getMySqlBuilder();
 	//     builder.select('*').from('users').where('items.available', '=', true).where('items.active', '=', false).where('items.number_available', '=', 0);

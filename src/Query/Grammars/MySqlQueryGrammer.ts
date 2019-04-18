@@ -84,7 +84,6 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	 * Compile the lock into SQL.
 	 */
 	protected compileLock(query: QueryObj, value: boolean | string): string {
-		// console.log(value)
 		if (typeof value !== 'string') {
 			return value ? 'for update' : 'lock in share mode'
 		}
@@ -223,7 +222,7 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	protected wrapJsonSelector(value: string): string {
 		const [field, path] = this.wrapJsonFieldAndPath(value)
 
-		return `json_uuquote(json_extract(${field}.${path}))`
+		return `json_unquote(json_extract(${field}${path}))`
 	}
 
 	/**
@@ -232,6 +231,6 @@ export class MySqlQueryGrammar extends QueryGrammar {
 	protected wrapJsonBooleanSelector(value: string): string {
 		const [field, path] = this.wrapJsonFieldAndPath(value)
 
-		return `json_extract(${field}.${path})`
+		return `json_extract(${field}${path})`
 	}
 }
