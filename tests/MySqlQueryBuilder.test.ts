@@ -4,7 +4,6 @@ import { Connection } from '../src/Connections/Connection'
 import { QueryProcessor } from '../src/Query/Processors/QueryProcessor'
 import { MySqlProcessor } from '../src/Query/Processors/MysqlProcessor'
 import { Mock } from 'ts-mockery'
-import { QueryGrammar } from '../src/Query/Grammars/QueryGrammar'
 import { Expression } from '../src/Query/Expression'
 
 let builder: QueryBuilder
@@ -449,11 +448,18 @@ describe('MySqlQueryBuilder', () => {
 	})
 
 	// test('MySqlWrappingJsonWithBooleanAndIntegerThatLooksLikeOne', () => {
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').where('items.available', '=', true).where('items.active', '=', false).where('items.number_available', '=', 0);
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_extract(`items`, \'."available"\') = true AND json_extract(`items`, \'."active"\') = false AND json_unquote(json_extract(`items`, \'."number_available"\')) = ?')
-	// }
-	// )
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('items.available', '=', true)
+	// 		.where('items.active', '=', false)
+	// 		.where('items.number_available', '=', 0)
+	// 	expect(builder.toSql()).toBe(
+	// 		'SELECT * FROM `users` WHERE json_extract(`items`, \'."available"\') = true AND json_extract(`items`, \'."active"\') = false AND json_unquote(json_extract(`items`, \'."number_available"\')) = ?'
+	// 	)
+	// })
+
 	// test('MySqlWrappingJson', () => {
 	//     builder = getMySqlBuilder();
 	//     builder.select('*').from('users').whereRaw('items.\'."price"\' = 1');
@@ -470,30 +476,44 @@ describe('MySqlQueryBuilder', () => {
 	// }
 
 	// )
-	// test('MySqlSoundsLikeOperator', () => {
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').where('name', 'sounds like', 'John Doe');
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE `name` sounds like ?')
-	//     expect(builder.getBindings()).toEqual(['John Doe'])
-	// }
 
-	// )
+	test('MySqlSoundsLikeOperator', () => {
+		builder = getMySqlBuilder()
+		builder
+			.select('*')
+			.from('users')
+			.where('name', 'sounds like', 'John Doe')
+		expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE `name` sounds like ?')
+		expect(builder.getBindings()).toEqual(['John Doe'])
+	})
+
 	// test('MySqlLock', () => {
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('foo').where('bar', '=', 'baz').lock();
-	//     expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? for update')
-	//     expect(builder.getBindings()).toEqual(['baz'])
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('foo').where('bar', '=', 'baz').lock(false);
-	//     expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? lock in share mode')
-	//     expect(builder.getBindings()).toEqual(['baz'])
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('foo').where('bar', '=', 'baz').lock('lock in share mode');
-	//     expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? lock in share mode')
-	//     expect(builder.getBindings()).toEqual(['baz'])
-	// }
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('foo')
+	// 		.where('bar', '=', 'baz')
+	// 		.lock()
+	// 	expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? for update')
+	// 	expect(builder.getBindings()).toEqual(['baz'])
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('foo')
+	// 		.where('bar', '=', 'baz')
+	// 		.lock(false)
+	// 	expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? lock in share mode')
+	// 	expect(builder.getBindings()).toEqual(['baz'])
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('foo')
+	// 		.where('bar', '=', 'baz')
+	// 		.lock('lock in share mode')
+	// 	expect(builder.toSql()).toBe('SELECT * FROM `foo` WHERE `bar` = ? lock in share mode')
+	// 	expect(builder.getBindings()).toEqual(['baz'])
+	// })
 
-	// )
 	// test('SelectWithLockUsesWritePdo', () => {
 	//     builder = getMySqlBuilderWithProcessor();
 	//     builder.getConnection().shouldReceive('SELECT').once()
@@ -506,22 +526,34 @@ describe('MySqlQueryBuilder', () => {
 	// }
 
 	// )
-	// test('WhereJsonContainsMySql', () => {
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').whereJsonContains('options', ['en']);
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_contains(`options`, ?)')
-	//     expect(builder.getBindings()).toEqual(['["en"]'])
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').whereJsonContains('users.options.languages', ['en']);
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_contains(`users`.`options`, ?, \'."languages"\')')
-	//     expect(builder.getBindings()).toEqual(['["en"]'])
-	//     builder = getMySqlBuilder();
-	//     builder.select('*').from('users').where('id', '=', 1).orWhereJsonContains('options.languages', new Raw("'[\"en\"]'"));
-	//     expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE `id` = ? OR json_contains(`options`, \'["en"]\', \'."languages"\')')
-	//     expect(builder.getBindings()).toEqual([1])
-	// }
 
-	// )
+	// test('WhereJsonContainsMySql', () => {
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereJsonContains('options', ['en'])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_contains(`options`, ?)')
+	// 	expect(builder.getBindings()).toEqual(['["en"]'])
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.whereJsonContains('users.options.languages', ['en'])
+	// 	expect(builder.toSql()).toBe('SELECT * FROM `users` WHERE json_contains(`users`.`options`, ?, \'."languages"\')')
+	// 	expect(builder.getBindings()).toEqual(['["en"]'])
+	// 	builder = getMySqlBuilder()
+	// 	builder
+	// 		.select('*')
+	// 		.from('users')
+	// 		.where('id', '=', 1)
+	// 		.orWhereJsonContains('options.languages', new Raw('\'["en"]\''))
+	// 	expect(builder.toSql()).toBe(
+	// 		'SELECT * FROM `users` WHERE `id` = ? OR json_contains(`options`, \'["en"]\', \'."languages"\')'
+	// 	)
+	// 	expect(builder.getBindings()).toEqual([1])
+	// })
+
 	// test('WhereJsonDoesntContainMySql', () => {
 	//     builder = getMySqlBuilder();
 	//     builder.select('*').from('users').whereJsonDoesntContain('options.languages', ['en']);
