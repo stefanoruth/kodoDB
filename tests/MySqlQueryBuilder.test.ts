@@ -8,20 +8,26 @@ import { Expression } from '../src/Query/Expression'
 
 let builder: QueryBuilder
 
-function getMySqlBuilder(args: { select?: any; processSelect?: any } = {}) {
-	const { select, processSelect } = { ...{ select: jest.fn(), processSelect: jest.fn() }, ...args }
+function getMySqlBuilder(args: Partial<QueryProcessor & Connection> = {}) {
+	const { select, processSelect, update } = {
+		...{ select: jest.fn(), processSelect: jest.fn(), update: jest.fn() },
+		...args,
+	}
 	const grammar = new MySqlQueryGrammar()
 	const processor = Mock.of<QueryProcessor>({ processSelect })
-	const connection = Mock.of<Connection>({ select })
+	const connection = Mock.of<Connection>({ select, update })
 
 	return Mock.from<QueryBuilder>(new QueryBuilder(connection, grammar, processor))
 }
 
-function getMySqlBuilderWithProcessor(args: { select?: any; processSelect?: any } = {}) {
-	const { select, processSelect } = { ...{ select: jest.fn(), processSelect: jest.fn() }, ...args }
+function getMySqlBuilderWithProcessor(args: Partial<QueryProcessor & Connection> = {}) {
+	const { select, processSelect, update } = {
+		...{ select: jest.fn(), processSelect: jest.fn(), update: jest.fn() },
+		...args,
+	}
 	const grammar = new MySqlQueryGrammar()
 	const processor = Mock.of<MySqlProcessor>({ processSelect })
-	const connection = Mock.of<Connection>({ select })
+	const connection = Mock.of<Connection>({ select, update })
 
 	return Mock.from<QueryBuilder>(new QueryBuilder(connection, grammar, processor))
 }
@@ -314,26 +320,32 @@ describe('MySqlQueryBuilder', () => {
 	// 		'SELECT count(*) as aggregate from ((SELECT * FROM "posts") UNION (SELECT * FROM "videos")) as "temp_table"'
 	// })
 
-	// test('UpdateMethod', () => {
+	test('UpdateMethod', () => {
+		builder = getMySqlBuilder()
+		expect(builder.getConnection().update).toHaveBeenCalledWith(
+			'update `users` set `email` = ?, `name` = ? where `id` = ? ORDER BY `foo` desc LIMIT 5',
+			['foo', 'bar', 1]
+		)
+		const result = builder
+			.from('users')
+			.where('id', '=', 1)
+			.orderBy('foo', 'DESC')
+			.limit(5)
+			.update({ email: 'foo', name: 'bar' })
+		expect(result).toBe(1)
+	})
 
-	//     builder = getMySqlBuilder();
-	//     builder.getConnection().shouldReceive('update').once().with('update `users` set `email` = ?, `name` = ? where `id` = ? ORDER BY `foo` desc LIMIT 5', ['foo', 'bar', 1]).andReturn(1);
-	//     result = builder.from('users').where('id', '=', 1).orderBy('foo', 'DESC').limit(5).upDATE(['email' => 'foo', 'name' => 'bar']);
-	//     assertEquals(1, result);
-	// }
-
-	// )
 	// test('UpdateMethodWithJoinsOnMySql', () => {
 	//     builder = getMySqlBuilder();
 	//     builder.getConnection().shouldReceive('update').once().with('update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` set `email` = ?, `name` = ? where `users`.`id` = ?', ['foo', 'bar', 1]).andReturn(1);
-	//     result = builder.from('users').join('orders', 'users.id', '=', 'orders.user_id').where('users.id', '=', 1).upDATE(['email' => 'foo', 'name' => 'bar']);
+	//     result = builder.from('users').join('orders', 'users.id', '=', 'orders.user_id').where('users.id', '=', 1).update(['email' => 'foo', 'name' => 'bar']);
 	//     assertEquals(1, result);
 	//     builder = getMySqlBuilder();
 	//     builder.getConnection().shouldReceive('update').once().with('update `users` inner join `orders` on `users`.`id` = `orders`.`user_id` AND `users`.`id` = ? set `email` = ?, `name` = ?', [1, 'foo', 'bar']).andReturn(1);
 	//     result = builder.from('users').join('orders', function (join) {
 	//         join.on('users.id', '=', 'orders.user_id')
 	//             .where('users.id', '=', 1);
-	//     }).upDATE(['email' => 'foo', 'name' => 'bar']);
+	//     }).update(['email' => 'foo', 'name' => 'bar']);
 	//     assertEquals(1, result);
 	// }
 
@@ -384,7 +396,7 @@ describe('MySqlQueryBuilder', () => {
 	//             ['2015-05-26 22:02:06', 0]
 	//         );
 	//     builder = new Builder(connection, grammar, processor);
-	//     builder.from('users').where('id', '=', 0).upDATE(['options.enable' => false, 'updated_at' => '2015-05-26 22:02:06']);
+	//     builder.from('users').where('id', '=', 0).update(['options.enable' => false, 'updated_at' => '2015-05-26 22:02:06']);
 	//     connection.shouldReceive('update')
 	//         .once()
 	//         .with(
@@ -392,13 +404,13 @@ describe('MySqlQueryBuilder', () => {
 	//             [45, '2015-05-26 22:02:06', 0]
 	//         );
 	//     builder = new Builder(connection, grammar, processor);
-	//     builder.from('users').where('id', '=', 0).upDATE(['options.size' => 45, 'updated_at' => '2015-05-26 22:02:06']);
+	//     builder.from('users').where('id', '=', 0).update(['options.size' => 45, 'updated_at' => '2015-05-26 22:02:06']);
 	//     builder = getMySqlBuilder();
 	//     builder.getConnection().shouldReceive('update').once().with('update `users` set `options` = json_set(`options`, \'."size"\', ?)', [null]);
-	//     builder.from('users').upDATE(['options.size' => null]);
+	//     builder.from('users').update(['options.size' => null]);
 	//     builder = getMySqlBuilder();
 	//     builder.getConnection().shouldReceive('update').once().with('update `users` set `options` = json_set(`options`, \'."size"\', 45)', []);
-	//     builder.from('users').upDATE(['options.size' => new Raw('45')]);
+	//     builder.from('users').update(['options.size' => new Raw('45')]);
 	// }
 
 	// )

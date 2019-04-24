@@ -3,6 +3,7 @@ import { Str, Collection } from '../../Utils'
 import { QueryObj } from '../QueryObj'
 import { WhereClause, Group, Bindings, Having, Column } from '../Components'
 import { Expression } from '../Expression'
+import { collect } from 'collect.js'
 
 export class QueryGrammar extends BaseGrammar {
 	/**
@@ -565,18 +566,47 @@ export class QueryGrammar extends BaseGrammar {
 			.join(', ')
 
 		return `INSERT INTO ${table} (${columns}) VALUES ${parameters}`
-	}
+    }
+
+    /**
+     * Compile an update statement into SQL.
+     */
+    compileUpdate(query: QueryObj, values: object):string
+    {
+        const table = this.wrapTable(query.from!);
+        // Each one of the columns in the update statements needs to be wrapped in the
+        // keyword identifiers, also a place-holder needs to be created for each of
+        // the values in the list of bindings so we can make the sets statements.
+        const columns = collect(values).map((value, key) => {
+            return this.wrap(key) + ' = ' + this.parameter(value)
+        }).implode(', ')
+
+        // If the query has any "join" clauses, we will setup the joins on the builder
+        // and compile them so we can attach them to this update, as update queries
+        // can get join statements to attach to other tables when they're needed.
+        let joins = '';
+        if (query.joins.length > 0) {
+            joins = ' '+this.compileJoins(query, query.joins);
+        }
+
+        // Of course, update queries may also be constrained by where clauses so we'll
+        // need to compile the where clauses and attach it to the query so only the
+        // intended records are updated by the SQL statements we generate to run.
+        const wheres = this.compileWheres(query);
+
+        return `update ${table}${joins} set ${columns} ${wheres}`.trim()
+    }
 
 	/**
 	 * Prepare the bindings for an update statement.
 	 */
-	prepareBindingsForUpdate(bindings: Bindings, values: any[]): any[] {
+	prepareBindingsForUpdate(bindings: Bindings, values: object): any[] {
 		const cleanBindings = new Collection(bindings)
 			.except(['join', 'select'])
 			.flatten()
 			.all()
 
-		return [...bindings.join, ...values, ...cleanBindings]
+		return [...bindings.join, ...Object.values(values), ...cleanBindings]
 	}
 
 	/**

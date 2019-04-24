@@ -1146,6 +1146,59 @@ export class QueryBuilder {
 	}
 
 	/**
+	 * Get the count of the total records for the paginator.
+	 */
+	getCountForPagination(columns: string | string[] = ['*']): number {
+		const results = this.runPaginationCountQuery(columns)
+		// Once we have run the pagination count query, we will get the resulting count and
+		// take into account what type of query it was. When there is a group by we will
+		// just return the count of the entire results set since that will be correct.
+		if (this.queryObj.groups) {
+			return results.length
+		} else if (results.length === 0) {
+			return 0
+		} else if (typeof results[0] === 'object') {
+			return parseInt(results[0].aggregate, 10)
+		}
+
+		return 0
+		// return (int) array_change_key_case((array) $results[0])['aggregate'];
+	}
+
+	/**
+	 * Run a pagination count query.
+	 */
+	protected runPaginationCountQuery(columns: string | string[] = ['*']): any[] {
+		const without = this.queryObj.unions ? ['orders', 'limit', 'offset'] : ['columns', 'orders', 'limit', 'offset']
+
+		return this.cloneWithout(without)
+			.cloneWithoutBindings(this.queryObj.unions ? ['order'] : ['select', 'order'])
+			.setAggregate('count', this.withoutSelectAliases(columns))
+			.get()
+			.all()
+	}
+
+	/**
+	 * Remove the column aliases since they will break count queries.
+	 */
+	protected withoutSelectAliases(columns: string | string[]): string[] {
+		columns = columns instanceof Array ? columns : [columns]
+
+		return columns.map(column => {
+			if (typeof column === 'string') {
+				return
+			}
+
+			return column
+		})
+		return array_map(function($column) {
+			return is_string($column) && ($aliasPosition = stripos($column, ' as ')) !== false
+				? substr($column, 0, $aliasPosition)
+				: $column
+		}, $columns)
+	}
+
+	/**
 	 * Get an array with the values of a given column.
 	 */
 	pluck(column: string, key?: string): Collection {
@@ -1293,6 +1346,18 @@ export class QueryBuilder {
 		return this.connection.insert(
 			this.grammar.compileInsert(this.queryObj, values),
 			this.cleanBindings(new Collection(values).flatten(1).all())
+		)
+	}
+
+	/**
+	 * Update a record in the database.
+	 */
+	update(values: object): number {
+		const sql = this.grammar.compileUpdate(this.queryObj, values)
+
+		return this.connection.update(
+			sql,
+			this.cleanBindings(this.grammar.prepareBindingsForUpdate(this.queryObj.bindings, values))
 		)
 	}
 

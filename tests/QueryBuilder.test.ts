@@ -7,7 +7,7 @@ import { Expression } from '../src/Query/Expression'
 
 let builder: QueryBuilder
 
-function getBuilder(args: { select?: any; processSelect?: any } = {}) {
+function getBuilder(args: Partial<QueryProcessor & Connection> = {}) {
 	const { select, processSelect } = { ...{ select: jest.fn(), processSelect: jest.fn() }, ...args }
 	const grammar = new QueryGrammar()
 	const processor = Mock.of<QueryProcessor>({ processSelect })
@@ -532,7 +532,7 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual([])
 	})
 
-	test('unions', () => {
+	test('Unions', () => {
 		builder = getBuilder()
 		builder
 			.select('*')
@@ -548,7 +548,7 @@ describe('QueryBuilder', () => {
 		expect(builder.getBindings()).toEqual([1, 2])
 	})
 
-	test('unionAlls', () => {
+	test('UnionAlls', () => {
 		builder = getBuilder()
 		builder
 			.select('*')
@@ -846,7 +846,17 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.havingBetween('last_login_date', ['2018-11-16', '2018-12-16'])
 		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "last_login_date" BETWEEN ? AND ?')
-	})
+    })
+
+    test('HavingShortcut', () => {
+        builder = getBuilder()
+        builder
+            .select('*')
+            .from('users')
+            .having('email', 1)
+            .orHaving('email', 2)
+        expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "email" = ? OR "email" = ?')
+    })
 
 	test('HavingFollowedBySelectGet', () => {
 		let query
@@ -883,16 +893,6 @@ describe('QueryBuilder', () => {
 			.get()
 		expect(builder.getConnection().select).toHaveBeenCalledWith(query, ['popular'])
 		expect(result.all()).toEqual([{ category: 'rock', total: 5 }])
-	})
-
-	test('HavingShortcut', () => {
-		builder = getBuilder()
-		builder
-			.select('*')
-			.from('users')
-			.having('email', 1)
-			.orHaving('email', 2)
-		expect(builder.toSql()).toBe('SELECT * FROM "users" HAVING "email" = ? OR "email" = ?')
 	})
 
 	test('RawHavings', () => {
@@ -998,7 +998,26 @@ describe('QueryBuilder', () => {
 			.from('users')
 			.forPage(-2, 0)
 		expect(builder.toSql()).toBe('SELECT * FROM "users" LIMIT 0 OFFSET 0')
-	})
+    })
+
+    test('GetCountForPaginationWithBindings',()=>
+    {
+        builder = getBuilder();
+        // builder.from('users').selectSub((q: QueryBuilder) => {
+        //     q.select('body').from('posts').where('id', 4);
+
+        //     return q
+        // }, 'post');
+
+        builder.getConnection().shouldReceive('select').once().with('select count(*) as aggregate from "users"', [], true).andReturn([['aggregate' => 1]]);
+        builder.getProcessor().shouldReceive('processSelect').once().andReturnUsing((builder, results) => {
+            return results;
+        });
+
+        expect(builder.getCountForPagination()).toBe(1)
+        expect(builder.getBindings()).toEqual([4])
+    })
+
 
 	test('WhereShortcut', () => {
 		builder = getBuilder()
