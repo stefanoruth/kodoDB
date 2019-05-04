@@ -6,6 +6,7 @@ import { Expression } from './Expression'
 import { Arr } from '../Utils/Arr'
 import { Operators, OperatorType } from './Operators'
 import { QueryObj } from './QueryObj'
+import { cloneDeep } from 'lodash'
 import { WhereBoolean, Bindings, BindingKeys, BindingType, OrderDirection, WhereClause, Column } from './Components'
 
 type QueryFn<T> = (sub: T) => any
@@ -58,7 +59,7 @@ export class QueryBuilder {
 	/**
 	 * Add a subselect expression to the query.
 	 */
-	selectSub(query: QueryBuilder | string, as: string) {
+	selectSub(query: QueryBuilder | string | QueryFn<QueryBuilder>, as: string) {
 		const [subQuery, bindings] = this.createSub(query)
 
 		return this.selectRaw(`(${subQuery}) as ${this.grammar.wrap(as)}`, bindings)
@@ -69,9 +70,11 @@ export class QueryBuilder {
 	 */
 	selectRaw(expression: string, bindings: any[] = []): this {
 		this.addSelect(new Expression(expression))
+
 		if (bindings) {
 			this.addBinding(bindings, 'select')
 		}
+
 		return this
 	}
 
@@ -80,6 +83,7 @@ export class QueryBuilder {
 	 */
 	fromSub(query: this | string | QueryFn<QueryBuilder>, as: string): this {
 		const [subQuery, bindings] = this.createSub(query)
+
 		return this.fromRaw(`(${subQuery}) AS ${this.grammar.wrap(as)}`, bindings)
 	}
 
@@ -89,20 +93,22 @@ export class QueryBuilder {
 	fromRaw(expression: string | Expression, bindings: any[] = []): this {
 		this.queryObj.from = new Expression(expression)
 		this.addBinding(bindings, 'from')
+
 		return this
 	}
 
 	/**
 	 * Creates a subquery and parse it.
 	 */
-	protected createSub(query: QueryBuilder | string | QueryFn<this>): [string, any[]] {
+	protected createSub(query: QueryBuilder | string | QueryFn<QueryBuilder>): [string, any[]] {
 		// If the given query is a Closure, we will execute it while passing in a new
 		// query instance to the Closure. This will give the developer a chance to
 		// format and work with the query before we cast it to a raw SQL string.
 		if (typeof query === 'function') {
 			const callback = query
 			query = this.forSubQuery()
-			callback(query as any)
+
+			callback(query)
 		}
 
 		return this.parseSub(query)
@@ -110,9 +116,6 @@ export class QueryBuilder {
 
 	/**
 	 * Parse the subquery into SQL and bindings.
-	 *
-	 * @param  mixed  query
-	 * @return array
 	 */
 	protected parseSub(query: QueryBuilder | string): [string, any[]] {
 		if (query instanceof QueryBuilder) {
@@ -182,6 +185,7 @@ export class QueryBuilder {
 			this.queryObj.joins.push(joinObj.queryObj)
 			this.addBinding(join.getBindings(), 'join')
 		}
+
 		return this
 	}
 
@@ -1150,6 +1154,7 @@ export class QueryBuilder {
 	 */
 	getCountForPagination(columns: string | string[] = ['*']): number {
 		const results = this.runPaginationCountQuery(columns)
+
 		// Once we have run the pagination count query, we will get the resulting count and
 		// take into account what type of query it was. When there is a group by we will
 		// just return the count of the entire results set since that will be correct.
@@ -1171,7 +1176,11 @@ export class QueryBuilder {
 	protected runPaginationCountQuery(columns: string | string[] = ['*']): any[] {
 		const without = this.queryObj.unions ? ['orders', 'limit', 'offset'] : ['columns', 'orders', 'limit', 'offset']
 
-		return this.cloneWithout(without)
+		const clone = this.cloneWithout(without)
+
+		console.log(clone, clone.cloneWithoutBindings)
+
+		return clone
 			.cloneWithoutBindings(this.queryObj.unions ? ['order'] : ['select', 'order'])
 			.setAggregate('count', this.withoutSelectAliases(columns))
 			.get()
@@ -1185,17 +1194,14 @@ export class QueryBuilder {
 		columns = columns instanceof Array ? columns : [columns]
 
 		return columns.map(column => {
-			if (typeof column === 'string') {
-				return
+			const aliasPosition = column.toLowerCase().indexOf(' as ')
+
+			if (typeof column === 'string' && aliasPosition) {
+				return column.slice(0, aliasPosition)
 			}
 
 			return column
 		})
-		return array_map(function($column) {
-			return is_string($column) && ($aliasPosition = stripos($column, ' as ')) !== false
-				? substr($column, 0, $aliasPosition)
-				: $column
-		}, $columns)
 	}
 
 	/**
@@ -1467,28 +1473,22 @@ export class QueryBuilder {
 
 	/**
 	 * Clone the query without the given properties.
-	 *
-	 * @param  array  properties
-	 * @return static
 	 */
-	cloneWithout(properties: string[]): this {
-		return tap({ ...this }, (clone: any) => {
+	cloneWithout(properties: string[]): QueryBuilder {
+		return tap(cloneDeep(this), (clone: any) => {
 			properties.forEach(property => {
-				clone[property] = null
+				clone.queryObj[property] = null
 			})
 		})
 	}
 
 	/**
 	 * Clone the query without the given bindings.
-	 *
-	 * @param  array  except
-	 * @return static
 	 */
-	cloneWithoutBindings(except: string[]): this {
-		return tap({ ...this }, (clone: any) => {
+	cloneWithoutBindings(except: string[]): QueryBuilder {
+		return tap(cloneDeep(this), (clone: any) => {
 			except.forEach(type => {
-				clone.bindings[type] = []
+				clone.queryObj.bindings[type] = []
 			})
 		})
 	}
