@@ -6,7 +6,7 @@
 	"types": "dist/index.d.ts",
 	"dependencies": {
 		"@types/lodash": "^4.14.120",
-		"@types/node": "^11.13.2",
+		"@types/node": "^12.0.0",
 		"@types/yargs": "^13.0.0",
 		"collect.js": "^4.8.1",
 		"lodash": "^4.17.11",
